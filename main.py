@@ -15,6 +15,7 @@ import requests
 # use the locally cached model and skip the hub round-trip (and its rate-limit warning)
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+os.environ.setdefault("TQDM_DISABLE", "1")  # silence the model's "Loading weights" bar
 
 SEARCH_URL = "https://gutendex.com/books/?search="
 BOOK_URL = "https://gutendex.com/books/"

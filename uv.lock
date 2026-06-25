@@ -80,6 +80,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "numpy" },
     { name = "requests" },
+    { name = "rich" },
     { name = "sentence-transformers" },
 ]
 
@@ -93,6 +94,7 @@ dev = [
 requires-dist = [
     { name = "numpy", specifier = ">=2.5.0" },
     { name = "requests", specifier = ">=2.34.2" },
+    { name = "rich", specifier = ">=15.0.0" },
     { name = "sentence-transformers", specifier = ">=5.6.0" },
 ]
 
