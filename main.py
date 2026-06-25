@@ -10,7 +10,12 @@ from pathlib import Path
 from typing import NamedTuple
 
 import numpy as np
+import pyperclip
 import requests
+from rich.console import Console
+from rich.panel import Panel
+
+console = Console()
 
 # use the locally cached model and skip the hub round-trip (and its rate-limit warning)
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
@@ -163,6 +168,46 @@ def preview(chunk: str, width: int = 90) -> str:
     return line[:width] + ("…" if len(line) > width else "")
 
 
+def reflow(text: str) -> str:
+    paragraphs = re.split(r"\n\s*\n", text)
+    return "\n\n".join(" ".join(p.split()) for p in paragraphs)
+
+
+SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def split_sentences(text: str) -> list[str]:
+    flat = " ".join(reflow(text).split())
+    return [s.strip() for s in SENTENCE_RE.split(flat) if s.strip()]
+
+
+def best_excerpt(text: str, query: str, max_words: int = 60) -> str:
+    sentences = split_sentences(text)
+    if len(sentences) <= 1:
+        return reflow(text)
+    scores = embed(sentences) @ embed([query])[0]
+    lo = hi = int(np.argmax(scores))
+    words = len(sentences[lo].split())
+    while hi - lo + 1 < 3:  # grow toward the better neighbour within the word budget
+        left = scores[lo - 1] if lo > 0 else -np.inf
+        right = scores[hi + 1] if hi < len(sentences) - 1 else -np.inf
+        if left == right == -np.inf:
+            break
+        nxt = lo - 1 if left >= right else hi + 1
+        if words + len(sentences[nxt].split()) > max_words:
+            break
+        lo, hi = min(lo, nxt), max(hi, nxt)
+        words += len(sentences[nxt].split())
+    return " ".join(sentences[lo : hi + 1])
+
+
+def humanize_author(author: str) -> str:
+    if author.count(",") == 1:
+        last, first = (part.strip() for part in author.split(","))
+        return f"{first} {last}"
+    return author
+
+
 class Passage(NamedTuple):
     title: str
     author: str
@@ -172,6 +217,14 @@ class Passage(NamedTuple):
     def cite(self) -> str:
         where = " · ".join(part for part in (self.author, self.title) if part)
         return f"{where} — {self.label}" if self.label else where
+
+    def share(self, excerpt: str | None = None) -> str:
+        body = excerpt if excerpt is not None else reflow(self.text)
+        author = humanize_author(self.author)
+        where = ", ".join(part for part in (author, self.title) if part)
+        if self.label:
+            where += f" ({self.label})"
+        return f"“{body}”\n\n— {where}"
 
 
 def book_metadata(book_id: int) -> tuple[str, str]:
@@ -268,19 +321,42 @@ def ask(
     if not results:
         print(f'\nNothing strong enough for "{query}".')
         return
-    print(f'\nPassages for "{query}":\n')
+    console.print(f"\n[bold]Passages for[/bold] [italic]“{query}”[/italic]\n")
     for rank, (i, score) in enumerate(results, 1):
         passage = passages[i]
-        print(f"  {rank}  [{score:.2f}]  {passage.cite()}")
-        print(f"        {preview(passage.text)}\n")
+        console.print(
+            f"  [bold cyan]{rank}[/]  [dim]{score:.2f}[/]  {passage.cite()}",
+            no_wrap=True,
+            overflow="ellipsis",
+        )
+        console.print(
+            f"      [dim italic]{preview(passage.text)}[/]",
+            no_wrap=True,
+            overflow="ellipsis",
+        )
+        console.print()
 
     choice = input("pick a number to deep read (enter to skip) > ").strip()
     if choice.isdigit() and 1 <= int(choice) <= len(results):
         passage = passages[results[int(choice) - 1][0]]
-        print("\n" + "=" * 70)
-        print(f"{passage.cite()}\n")
-        print(passage.text)
-        print("=" * 70)
+        console.print()
+        console.print(
+            Panel(
+                reflow(passage.text),
+                title=passage.cite(),
+                title_align="left",
+                border_style="dim",
+                padding=(1, 2),
+            )
+        )
+        if input("copy as a shareable quote? [y/N] > ").strip().lower() == "y":
+            quote = passage.share(best_excerpt(passage.text, query))
+            try:
+                pyperclip.copy(quote)
+                console.print("\n[green]copied to clipboard:[/]\n")
+            except pyperclip.PyperclipException:
+                console.print("\n[yellow]no clipboard available — here it is:[/]\n")
+            console.print(quote)
 
 
 def run_search(term: str) -> None:

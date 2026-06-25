@@ -48,6 +48,19 @@ uv run main.py ask "ivan meets the devil" --book 28054    # limit to one book
 
 `ask` prints the top passages with citations, then lets you pick one to read in full.
 
+### Phrasing your question
+
+This searches *what philosophers and novelists actually wrote*, so meet the corpus in its own
+register. It shines on timeless human questions — death, love, fear, meaning, ambition — asked in
+plain words. It struggles with modern jargon: a query like "how to be a better marketer?" scores
+low not because the books are silent on it, but because the *word* is anachronistic — Montaigne
+wrote about rhetoric and persuasion, Thoreau about honest trade, but never about "marketers". Ask
+in the books' own terms ("how do I persuade people and win them to my view?") and the same ideas
+surface with much higher scores.
+
+Scores are relative: a top match around `0.45+` is strong, while everything clustering at `0.2x`
+usually means the question is off-domain — try rephrasing toward a timeless theme.
+
 ### Growing the library
 
 Add a Gutenberg id (use `search` to find it) to `library.txt`, then run `uv run main.py index`.

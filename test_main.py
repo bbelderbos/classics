@@ -1,6 +1,15 @@
 import numpy as np
 
-from main import Passage, chunk_text, diversify, preview, read_library, retrieve
+from main import (
+    Passage,
+    chunk_text,
+    diversify,
+    humanize_author,
+    preview,
+    read_library,
+    reflow,
+    retrieve,
+)
 
 
 def test_diversify_caps_passages_per_book():
@@ -90,3 +99,23 @@ def test_retrieve_ranks_by_cosine_similarity(monkeypatch):
 
 def test_preview_truncates_and_collapses_whitespace():
     assert preview("hello    world\n\nagain", width=11) == "hello world…"
+
+
+def test_reflow_unwraps_lines_but_keeps_paragraphs():
+    text = "one two\nthree\n\nfour\nfive"
+    assert reflow(text) == "one two three\n\nfour five"
+
+
+def test_humanize_author_flips_single_last_first():
+    assert humanize_author("Schopenhauer, Arthur") == "Arthur Schopenhauer"
+    assert humanize_author("Homer") == "Homer"
+    assert humanize_author("Beaumont, Francis, Fletcher, John") == (
+        "Beaumont, Francis, Fletcher, John"
+    )
+
+
+def test_passage_share_quotes_text_and_attributes():
+    p = Passage("The Republic", "Plato", "BOOK II", "the just\nman")
+    assert p.share() == "“the just man”\n\n— Plato, The Republic (BOOK II)"
+    bare = Passage("Walden", "", "", "wild\nthings")
+    assert bare.share() == "“wild things”\n\n— Walden"
