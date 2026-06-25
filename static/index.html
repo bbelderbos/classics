@@ -152,6 +152,7 @@
         ink: "#2b2622", paper: "#f5f1e8", card: "#fffdf8",
         rule: "#d9ccb4", muted: "#8a7f6f", accent: "#8a5a2b",
       };
+      const SITE = "belderbos.dev/classics"; // footer destination on the share image
 
       const form = document.getElementById("form");
       const input = document.getElementById("q");
@@ -160,7 +161,8 @@
       const overlay = document.getElementById("overlay");
       const overlayImg = document.getElementById("overlayImg");
 
-      let selection = null; // { text, author, title }
+      let selection = null; // { text, author, title, query }
+      let activeQuery = "";
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -183,13 +185,11 @@
           return;
         }
         results.innerHTML = "";
+        activeQuery = q;
         for (const m of matches) {
           const card = document.createElement("div");
           card.className = "card";
-          const paras = m.text
-            .split(/\n{2,}/)
-            .map((p) => p.trim())
-            .filter(Boolean)
+          const paras = paragraphize(m.text)
             .map((p) => `<p>${escapeHtml(p)}</p>`)
             .join("");
           card.innerHTML = `
@@ -230,7 +230,12 @@
           floatShare.hidden = true;
           return;
         }
-        selection = { text, author: full.dataset.author, title: full.dataset.title };
+        selection = {
+          text,
+          author: full.dataset.author,
+          title: full.dataset.title,
+          query: activeQuery,
+        };
         const r = sel.getRangeAt(0).getBoundingClientRect();
         floatShare.style.top = `${window.scrollY + r.top - 42}px`;
         floatShare.style.left = `${window.scrollX + r.left}px`;
@@ -263,7 +268,7 @@
         if (e.target === overlay) overlay.hidden = true;
       });
 
-      function renderImage({ text, author, title }) {
+      function renderImage({ text, author, title, query }) {
         const scale = 2;
         const W = 1080;
         const pad = 96;
@@ -271,23 +276,26 @@
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 
+        const askFont = "26px Georgia, serif";
         const quoteFont = "italic 46px Georgia, serif";
         const attrFont = "27px Georgia, serif";
+        const askLH = 36;
         const quoteLH = 66;
         const attrLH = 38;
 
+        const askLines = query ? wrap(ctx, squish(query), askFont, maxW) : [];
         const quoteLines = wrap(ctx, `“${squish(text)}”`, quoteFont, maxW);
         const attribution = `— ${[humanize(author), title].filter(Boolean).join(", ")}`;
         const attrLines = wrap(ctx, attribution, attrFont, maxW);
 
-        let y = pad + 18; // brand baseline
-        y += 56; // gap below wordmark
+        let y = pad;
+        const askTop = y;
+        if (askLines.length) y += askLines.length * askLH + 48;
         const quoteTop = y;
-        y += quoteLines.length * quoteLH;
-        y += 44;
+        y += quoteLines.length * quoteLH + 44;
         const attrTop = y;
         y += attrLines.length * attrLH;
-        const H = y + 96; // bottom mark + padding
+        const H = y + 120; // footer lockup + padding
 
         canvas.width = W * scale;
         canvas.height = H * scale;
@@ -300,12 +308,13 @@
         ctx.strokeRect(28, 28, W - 56, H - 56);
 
         ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = COLORS.muted;
-        ctx.font = "600 30px Georgia, serif";
-        ctx.letterSpacing = "6px";
-        ctx.fillText("CLASSICS", pad, pad + 18);
-        ctx.letterSpacing = "0px";
 
+        // the asked question — a quiet prompt the canon is answering
+        ctx.fillStyle = COLORS.muted;
+        ctx.font = askFont;
+        askLines.forEach((line, i) => ctx.fillText(line, pad, askTop + (i + 1) * askLH));
+
+        // the answer, in the author's own words
         ctx.fillStyle = COLORS.ink;
         ctx.font = quoteFont;
         quoteLines.forEach((line, i) => ctx.fillText(line, pad, quoteTop + (i + 1) * quoteLH - 18));
@@ -314,10 +323,16 @@
         ctx.font = attrFont;
         attrLines.forEach((line, i) => ctx.fillText(line, pad, attrTop + (i + 1) * attrLH - 10));
 
+        // quiet footer lockup: product mark left, site right
+        const footY = H - pad + 30;
         ctx.fillStyle = COLORS.muted;
+        ctx.font = "600 22px Georgia, serif";
+        ctx.letterSpacing = "5px";
+        ctx.fillText("CLASSICS", pad, footY);
+        ctx.letterSpacing = "0px";
         ctx.font = "22px Georgia, serif";
         ctx.textAlign = "right";
-        ctx.fillText("belderbos.dev", W - pad, H - pad + 26);
+        ctx.fillText(SITE, W - pad, footY);
         ctx.textAlign = "left";
 
         return canvas;
@@ -341,6 +356,43 @@
       }
 
       function squish(s) { return s.replace(/\s+/g, " ").trim(); }
+
+      // Keep the author's own paragraph breaks; only break the monolith
+      // essay-paragraphs, and only ever at sentence ends so quoting stays clean.
+      const SPLIT_OVER = 90; // leave paragraphs shorter than this untouched
+      const GROUP_WORDS = 55; // aim subdivided paragraphs at roughly this length
+
+      function paragraphize(text) {
+        const out = [];
+        for (const block of text.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean)) {
+          if (words(block) <= SPLIT_OVER) {
+            out.push(block);
+            continue;
+          }
+          let group = [];
+          let count = 0;
+          for (const sentence of sentences(block)) {
+            group.push(sentence);
+            count += words(sentence);
+            if (count >= GROUP_WORDS) {
+              out.push(group.join(" "));
+              group = [];
+              count = 0;
+            }
+          }
+          if (group.length) out.push(group.join(" "));
+        }
+        return out;
+      }
+
+      function sentences(text) {
+        return text
+          .split(/(?<=[.!?]["'”’]?)\s+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+
+      function words(s) { return (s.match(/\S+/g) || []).length; }
 
       function humanize(a) {
         if ((a.match(/,/g) || []).length === 1) {
