@@ -1,23 +1,39 @@
-# Curated canon — Project Gutenberg book IDs, one per line.
-# Add a line to extend the library, then run:  uv run main.py index
 # (the indexer skips anything already built and reports any id it can't fetch)
+# Add a line to extend the library, then run:  uv run main.py index
+# Curated canon — Project Gutenberg book IDs, one per line.
 
-2600    # Tolstoy — War and Peace
-28054   # Dostoevsky — The Brothers Karamazov
-2554    # Dostoevsky — Crime and Punishment
-2680    # Marcus Aurelius — Meditations
-1497    # Plato — The Republic
-1342    # Austen — Pride and Prejudice
-98      # Dickens — A Tale of Two Cities
-1400    # Dickens — Great Expectations
-2701    # Melville — Moby Dick
+10      # The King James Version of the Bible
+74      # Twain — The Adventures of Tom Sawyer
 84      # Shelley — Frankenstein
-174     # Wilde — The Picture of Dorian Gray
-345     # Stoker — Dracula
-1184    # Dumas — The Count of Monte Cristo
-205     # Thoreau — Walden
-1232    # Machiavelli — The Prince
+98      # Dickens — A Tale of Two Cities
 100     # Shakespeare — The Complete Works
-3600    # Montaigne — Essays of Michel de Montaigne
-75802   # Hesse — Der Steppenwolf
+135     # Hugo — Les Misérables
+174     # Wilde — The Picture of Dorian Gray
+205     # Thoreau — Walden
+216     # Laozi — Tao Teh King
+345     # Stoker — Dracula
+829     # Swift — Gulliver's Travels
+1184    # Dumas — The Count of Monte Cristo
+1232    # Machiavelli — The Prince
+1260    # Brontë — Jane Eyre
+1342    # Austen — Pride and Prejudice
+1400    # Dickens — Great Expectations
+1497    # Plato — The Republic
+1974    # Aristotle — The Poetics of Aristotle
+2147    # Poe — The Works of Edgar Allan Poe (Volume 1)
 2500    # Hesse — Siddhartha
+2554    # Dostoevsky — Crime and Punishment
+2600    # Tolstoy — War and Peace
+2680    # Marcus Aurelius — Meditations
+2701    # Melville — Moby Dick
+3600    # Montaigne — Essays of Michel de Montaigne
+6130    # Homer — The Iliad
+7849    # Kafka — The Trial
+10661   # Epictetus — The Discourses of Epictetus
+11945   # Schopenhauer — Essays of Schopenhauer
+17405   # Sun Tzu — The Art of War
+22295   # Aquinas — On Prayer and the Contemplative Life
+28054   # Dostoevsky — The Brothers Karamazov
+46389   # Confucius — The Sayings of Confucius
+64576   # Seneca — Minor Dialogues
+75802   # Hesse — Der Steppenwolf
