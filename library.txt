@@ -18,3 +18,6 @@
 205     # Thoreau — Walden
 1232    # Machiavelli — The Prince
 100     # Shakespeare — The Complete Works
+3600    # Montaigne — Essays of Michel de Montaigne
+75802   # Hesse — Der Steppenwolf
+2500    # Hesse — Siddhartha

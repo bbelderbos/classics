@@ -1,6 +1,20 @@
 import numpy as np
 
-from main import Passage, chunk_text, preview, read_library, retrieve
+from main import Passage, chunk_text, diversify, preview, read_library, retrieve
+
+
+def test_diversify_caps_passages_per_book():
+    # one book monopolises the ranking; cap should let others through
+    ranked = [(0, 0.9), (1, 0.8), (2, 0.7), (3, 0.6), (4, 0.5)]
+    books = {0: "A", 1: "A", 2: "A", 3: "B", 4: "C"}
+    out = diversify(ranked, lambda i: books[i], k=3, per_book=2)
+    assert [i for i, _ in out] == [0, 1, 3]  # A capped at 2, then B
+
+
+def test_diversify_no_cap_when_per_book_zero():
+    ranked = [(0, 0.9), (1, 0.8), (2, 0.7)]
+    out = diversify(ranked, lambda _: "A", k=3, per_book=0)
+    assert [i for i, _ in out] == [0, 1, 2]
 
 
 def test_read_library_parses_ids_and_ignores_comments(tmp_path):

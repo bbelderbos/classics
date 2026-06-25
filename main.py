@@ -3,6 +3,8 @@ import json
 import os
 import re
 import sys
+from collections import Counter
+from collections.abc import Callable
 from functools import cache
 from pathlib import Path
 from typing import NamedTuple
@@ -128,6 +130,22 @@ def retrieve(query: str, vectors: np.ndarray, k: int = 5) -> list[tuple[int, flo
     return [(int(i), float(scores[i])) for i in top]
 
 
+def diversify(
+    ranked: list[tuple[int, float]], key_of: Callable[[int], str], k: int, per_book: int
+) -> list[tuple[int, float]]:
+    selected: list[tuple[int, float]] = []
+    seen: Counter[str] = Counter()
+    for idx, score in ranked:
+        key = key_of(idx)
+        if per_book > 0 and seen[key] >= per_book:
+            continue
+        selected.append((idx, score))
+        seen[key] += 1
+        if len(selected) == k:
+            break
+    return selected
+
+
 def build_index(book_id: int, text: str) -> tuple[list[Chunk], np.ndarray]:
     chunks = chunk_text(text)
     vectors = embed([c.text for c in chunks])
@@ -225,13 +243,16 @@ def load_library(book_ids: list[int] | None = None) -> tuple[list[Passage], np.n
     return passages, np.vstack(matrices) if matrices else np.empty((0, 0))
 
 
-def ask(query: str, book_ids: list[int] | None = None, k: int = 5) -> None:
+def ask(
+    query: str, book_ids: list[int] | None = None, k: int = 5, per_book: int = 2
+) -> None:
     passages, vectors = load_library(book_ids)
     if not passages:
         print("No indexed books found. Run: uv run main.py index")
         return
 
-    results = retrieve(query, vectors, k)
+    pool = retrieve(query, vectors, k=min(len(passages), 200))
+    results = diversify(pool, lambda i: passages[i].title, k, per_book)
     print(f'\nPassages for "{query}":\n')
     for rank, (i, score) in enumerate(results, 1):
         passage = passages[i]
@@ -288,6 +309,9 @@ def main(argv: list[str] | None = None) -> None:
     p_ask.add_argument("query")
     p_ask.add_argument("--book", type=int, help="limit the search to one book id")
     p_ask.add_argument("-k", type=int, default=5, help="how many passages to return")
+    p_ask.add_argument(
+        "--per-book", type=int, default=2, help="max passages per book (0 = no cap)"
+    )
 
     args = parser.parse_args(argv)
 
@@ -300,7 +324,7 @@ def main(argv: list[str] | None = None) -> None:
             add_to_library(args.book_ids)
         index_books(args.book_ids or read_library())
     elif args.command == "ask":
-        ask(args.query, [args.book] if args.book else None, args.k)
+        ask(args.query, [args.book] if args.book else None, args.k, args.per_book)
 
 
 if __name__ == "__main__":
