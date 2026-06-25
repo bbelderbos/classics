@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import re
 import sys
 from functools import cache
@@ -8,7 +9,10 @@ from typing import NamedTuple
 
 import numpy as np
 import requests
-import sentence_transformers as st
+
+# use the locally cached model and skip the hub round-trip (and its rate-limit warning)
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 SEARCH_URL = "https://gutendex.com/books/?search="
 BOOK_URL = "https://gutendex.com/books/"
@@ -60,25 +64,56 @@ def save_book(book_id: int) -> Path:
     return path
 
 
-def chunk_text(text: str, target_words: int = 600, overlap: int = 1) -> list[str]:
+class Chunk(NamedTuple):
+    label: str  # e.g. "BOOK XI — Chapter IX", best-effort from Gutenberg headings
+    text: str
+
+
+HEADING_RE = re.compile(
+    r"^(chapter|book|part|volume|canto|letter|epilogue|prologue)\b", re.IGNORECASE
+)
+SECTION_RE = re.compile(r"^(book|part|volume)\b", re.IGNORECASE)
+
+
+def _heading(paragraph: str) -> str | None:
+    line = " ".join(paragraph.split())
+    return line if len(line) <= 60 and HEADING_RE.match(line) else None
+
+
+def chunk_text(text: str, target_words: int = 600, overlap: int = 1) -> list[Chunk]:
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
-    chunks: list[str] = []
+    chunks: list[Chunk] = []
     current: list[str] = []
     words = 0
+    section = chapter = label = chunk_label = ""
+
     for para in paragraphs:
+        heading = _heading(para)
+        if heading:
+            if SECTION_RE.match(heading):
+                section, chapter = heading, ""
+            else:
+                chapter = heading
+            label = " — ".join(part for part in (section, chapter) if part)
+            continue
+        if not current:
+            chunk_label = label
         current.append(para)
         words += len(para.split())
         if words >= target_words:
-            chunks.append("\n\n".join(current))
+            chunks.append(Chunk(chunk_label, "\n\n".join(current)))
             current = current[-overlap:] if overlap else []
             words = sum(len(p.split()) for p in current)
+            chunk_label = label  # next chunk starts in whatever chapter is current
     if current:
-        chunks.append("\n\n".join(current))
+        chunks.append(Chunk(chunk_label, "\n\n".join(current)))
     return chunks
 
 
 @cache
 def _model():
+    import sentence_transformers as st  # lazy so the offline env vars take effect first
+
     return st.SentenceTransformer(EMBED_MODEL)
 
 
@@ -86,27 +121,28 @@ def embed(texts: list[str]) -> np.ndarray:
     return _model().encode(texts, normalize_embeddings=True)
 
 
-def retrieve(
-    query: str, chunks: list[str], vectors: np.ndarray, k: int = 5
-) -> list[tuple[int, float]]:
+def retrieve(query: str, vectors: np.ndarray, k: int = 5) -> list[tuple[int, float]]:
     scores = vectors @ embed([query])[0]
     top = np.argsort(scores)[::-1][:k]
     return [(int(i), float(scores[i])) for i in top]
 
 
-def load_index(book_id: int) -> tuple[list[str], np.ndarray] | None:
+def load_index(book_id: int) -> tuple[list[Chunk], np.ndarray] | None:
     chunks_path = BOOKS_DIR / f"{book_id}.chunks.json"
     vectors_path = BOOKS_DIR / f"{book_id}.npy"
     if chunks_path.exists() and vectors_path.exists():
-        return json.loads(chunks_path.read_text()), np.load(vectors_path)
+        raw = json.loads(chunks_path.read_text())
+        return [Chunk(**c) for c in raw], np.load(vectors_path)
     return None
 
 
-def build_index(book_id: int, text: str) -> tuple[list[str], np.ndarray]:
+def build_index(book_id: int, text: str) -> tuple[list[Chunk], np.ndarray]:
     chunks = chunk_text(text)
-    vectors = embed(chunks)
+    vectors = embed([c.text for c in chunks])
     BOOKS_DIR.mkdir(exist_ok=True)
-    (BOOKS_DIR / f"{book_id}.chunks.json").write_text(json.dumps(chunks))
+    (BOOKS_DIR / f"{book_id}.chunks.json").write_text(
+        json.dumps([c._asdict() for c in chunks])
+    )
     np.save(BOOKS_DIR / f"{book_id}.npy", vectors)
     return chunks, vectors
 
@@ -129,16 +165,20 @@ def ask_book(book_id: int, query: str) -> None:
     else:
         chunks, vectors = index
 
-    results = retrieve(query, chunks, vectors)
+    results = retrieve(query, vectors)
     print(f'\nPassages matching "{query}":\n')
     for rank, (i, score) in enumerate(results, 1):
-        print(f"  {rank}  [{score:.2f}]  {preview(chunks[i])}")
+        chunk = chunks[i]
+        location = f"{chunk.label} — " if chunk.label else ""
+        print(f"  {rank}  [{score:.2f}]  {location}{preview(chunk.text)}")
 
     choice = input("\npick a number to deep read (enter to skip) > ").strip()
     if choice.isdigit() and 1 <= int(choice) <= len(results):
-        idx = results[int(choice) - 1][0]
+        chunk = chunks[results[int(choice) - 1][0]]
         print("\n" + "=" * 70)
-        print(chunks[idx])
+        if chunk.label:
+            print(f"[{chunk.label}]\n")
+        print(chunk.text)
         print("=" * 70)
 
 
