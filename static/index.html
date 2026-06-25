@@ -80,6 +80,7 @@
       }
       .full p:first-letter { /* gentle lead-in, not a full drop cap */ }
       .full .read-hint { color: var(--muted); font-style: italic; font-size: 0.82rem; margin-bottom: 1rem; }
+      .full mark { background: #f0e6d6; color: inherit; padding: 0.05em 0.12em; border-radius: 3px; }
       ::selection { background: #e7d4b8; }
 
       .float-share {
@@ -190,7 +191,7 @@
           const card = document.createElement("div");
           card.className = "card";
           const paras = paragraphize(m.text)
-            .map((p) => `<p>${escapeHtml(p)}</p>`)
+            .map((p) => `<p>${markMatch(p, m.highlight)}</p>`)
             .join("");
           card.innerHTML = `
             <div class="head">
@@ -203,7 +204,7 @@
             <div class="full" hidden data-author="${escapeHtml(m.author)}" data-title="${escapeHtml(
             m.title
           )}">
-              <p class="read-hint">Select any lines to share them as an image.</p>
+              <p class="read-hint">The highlighted lines best match your question — select any to share as an image.</p>
               ${paras}
             </div>`;
           const full = card.querySelector(".full");
@@ -283,8 +284,8 @@
         const quoteLH = 66;
         const attrLH = 38;
 
-        const askLines = query ? wrap(ctx, squish(query), askFont, maxW) : [];
-        const quoteLines = wrap(ctx, `“${squish(text)}”`, quoteFont, maxW);
+        const askLines = query ? wrap(ctx, `Asked: ${squish(query)}`, askFont, maxW) : [];
+        const quoteLines = wrap(ctx, quoted(squish(text)), quoteFont, maxW);
         const attribution = `— ${[humanize(author), title].filter(Boolean).join(", ")}`;
         const attrLines = wrap(ctx, attribution, attrFont, maxW);
 
@@ -355,7 +356,42 @@
         return lines;
       }
 
+      // highlight the passage's best-matching span so it's easy to pick for sharing
+      function markMatch(paragraph, excerpt) {
+        const norm = (w) => w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+        if (!excerpt) return escapeHtml(paragraph);
+        const tokens = [...paragraph.matchAll(/\S+/g)]
+          .map((m) => ({ i: m.index, len: m[0].length, n: norm(m[0]) }))
+          .filter((t) => t.n);
+        const hay = ` ${excerpt.split(/\s+/).map(norm).filter(Boolean).join(" ")} `;
+        let best = null;
+        for (let a = 0; a < tokens.length; a++) {
+          let run = "";
+          for (let b = a; b < tokens.length; b++) {
+            const next = run ? `${run} ${tokens[b].n}` : tokens[b].n;
+            if (!hay.includes(` ${next} `)) break;
+            run = next;
+            if (!best || b - a > best.b - best.a) best = { a, b };
+          }
+        }
+        if (!best || best.b - best.a < 3) return escapeHtml(paragraph);
+        const s = tokens[best.a].i;
+        const e = tokens[best.b].i + tokens[best.b].len;
+        return (
+          escapeHtml(paragraph.slice(0, s)) +
+          `<mark>${escapeHtml(paragraph.slice(s, e))}</mark>` +
+          escapeHtml(paragraph.slice(e))
+        );
+      }
+
       function squish(s) { return s.replace(/\s+/g, " ").trim(); }
+
+      // wrap in curly quotes, but don't double up if the selection already has them
+      function quoted(s) {
+        const open = /^[“"‘']/.test(s) ? "" : "“";
+        const close = /[”"’']$/.test(s) ? "" : "”";
+        return open + s + close;
+      }
 
       // Keep the author's own paragraph breaks; only break the monolith
       // essay-paragraphs, and only ever at sentence ends so quoting stays clean.

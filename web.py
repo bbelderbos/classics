@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from main import (
     Passage,
+    best_excerpt,
     load_library,
     reflow,
     search_passages,
@@ -33,6 +34,7 @@ class Match(BaseModel):
     title: str
     label: str
     text: str
+    highlight: str
 
 
 @app.get("/")
@@ -55,6 +57,7 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
             title=passages[i].title,
             label=passages[i].label,
             text=reflow(passages[i].text),
+            highlight=best_excerpt(passages[i].text, q),
         )
         for rank, (i, score) in enumerate(ranked, 1)
     ]
