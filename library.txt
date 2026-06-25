@@ -1,0 +1,20 @@
+# Curated canon — Project Gutenberg book IDs, one per line.
+# Add a line to extend the library, then run:  uv run main.py index
+# (the indexer skips anything already built and reports any id it can't fetch)
+
+2600    # Tolstoy — War and Peace
+28054   # Dostoevsky — The Brothers Karamazov
+2554    # Dostoevsky — Crime and Punishment
+2680    # Marcus Aurelius — Meditations
+1497    # Plato — The Republic
+1342    # Austen — Pride and Prejudice
+98      # Dickens — A Tale of Two Cities
+1400    # Dickens — Great Expectations
+2701    # Melville — Moby Dick
+84      # Shelley — Frankenstein
+174     # Wilde — The Picture of Dorian Gray
+345     # Stoker — Dracula
+1184    # Dumas — The Count of Monte Cristo
+205     # Thoreau — Walden
+1232    # Machiavelli — The Prince
+100     # Shakespeare — The Complete Works

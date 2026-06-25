@@ -1,6 +1,19 @@
 import numpy as np
 
-from main import chunk_text, preview, retrieve
+from main import Passage, chunk_text, preview, read_library, retrieve
+
+
+def test_read_library_parses_ids_and_ignores_comments(tmp_path):
+    f = tmp_path / "lib.txt"
+    f.write_text("# header\n2600  # War and Peace\n\n28054\n")
+    assert read_library(f) == [2600, 28054]
+
+
+def test_passage_cite_combines_author_title_and_label():
+    p = Passage("War and Peace", "Tolstoy", "BOOK XI — CHAPTER IX", "...")
+    assert p.cite() == "Tolstoy · War and Peace — BOOK XI — CHAPTER IX"
+    bare = Passage("Walden", "", "", "...")
+    assert bare.cite() == "Walden"
 
 
 def test_chunk_text_packs_to_word_budget():

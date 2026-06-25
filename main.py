@@ -17,6 +17,7 @@ os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 SEARCH_URL = "https://gutendex.com/books/?search="
 BOOK_URL = "https://gutendex.com/books/"
 BOOKS_DIR = Path("books")
+LIBRARY_FILE = Path("library.txt")
 EMBED_MODEL = "all-MiniLM-L6-v2"
 
 
@@ -127,15 +128,6 @@ def retrieve(query: str, vectors: np.ndarray, k: int = 5) -> list[tuple[int, flo
     return [(int(i), float(scores[i])) for i in top]
 
 
-def load_index(book_id: int) -> tuple[list[Chunk], np.ndarray] | None:
-    chunks_path = BOOKS_DIR / f"{book_id}.chunks.json"
-    vectors_path = BOOKS_DIR / f"{book_id}.npy"
-    if chunks_path.exists() and vectors_path.exists():
-        raw = json.loads(chunks_path.read_text())
-        return [Chunk(**c) for c in raw], np.load(vectors_path)
-    return None
-
-
 def build_index(book_id: int, text: str) -> tuple[list[Chunk], np.ndarray]:
     chunks = chunk_text(text)
     vectors = embed([c.text for c in chunks])
@@ -152,38 +144,115 @@ def preview(chunk: str, width: int = 90) -> str:
     return line[:width] + ("…" if len(line) > width else "")
 
 
-def ask_book(book_id: int, query: str) -> None:
-    text_path = BOOKS_DIR / f"{book_id}.txt"
-    if not text_path.exists():
-        print(f"Fetching book {book_id}...")
-        save_book(book_id)
+class Passage(NamedTuple):
+    title: str
+    author: str
+    label: str
+    text: str
 
-    index = load_index(book_id)
-    if index is None:
-        print("Building index (one-time)...")
-        chunks, vectors = build_index(book_id, text_path.read_text(encoding="utf-8"))
-    else:
-        chunks, vectors = index
+    def cite(self) -> str:
+        where = " · ".join(part for part in (self.author, self.title) if part)
+        return f"{where} — {self.label}" if self.label else where
 
-    results = retrieve(query, vectors)
-    print(f'\nPassages matching "{query}":\n')
+
+def book_metadata(book_id: int) -> tuple[str, str]:
+    data = requests.get(f"{BOOK_URL}{book_id}").json()
+    author = ", ".join(a["name"] for a in data.get("authors", []))
+    return data.get("title", str(book_id)), author
+
+
+def read_library(path: Path = LIBRARY_FILE) -> list[int]:
+    if not path.exists():
+        return []
+    ids = []
+    for line in path.read_text().splitlines():
+        token = line.split("#", 1)[0].strip()
+        if token:
+            ids.append(int(token))
+    return ids
+
+
+def add_to_library(book_ids: list[int], path: Path = LIBRARY_FILE) -> None:
+    new = [b for b in book_ids if b not in set(read_library(path))]
+    if new:
+        with path.open("a") as f:
+            f.writelines(f"{b}\n" for b in new)
+
+
+def index_books(book_ids: list[int]) -> None:
+    if not book_ids:
+        print(
+            "Nothing to index. Add ids to library.txt or pass them: main.py index 1342"
+        )
+        return
+    for book_id in book_ids:
+        meta_path = BOOKS_DIR / f"{book_id}.meta.json"
+        built = (BOOKS_DIR / f"{book_id}.npy").exists()
+        if built and meta_path.exists():
+            print(f"  = {book_id} already indexed")
+            continue
+        try:
+            text_path = BOOKS_DIR / f"{book_id}.txt"
+            if not text_path.exists():
+                save_book(book_id)
+            title, author = book_metadata(book_id)
+            BOOKS_DIR.mkdir(exist_ok=True)
+            meta_path.write_text(json.dumps({"title": title, "author": author}))
+            if built:
+                print(f"  ~ {book_id} {title} (metadata backfilled)")
+            else:
+                chunks, _ = build_index(book_id, text_path.read_text(encoding="utf-8"))
+                print(f"  + {book_id} {title} — {len(chunks)} passages")
+        except Exception as e:
+            print(f"  x {book_id}: {e}")
+    print("done.")
+
+
+def load_library(book_ids: list[int] | None = None) -> tuple[list[Passage], np.ndarray]:
+    passages: list[Passage] = []
+    matrices: list[np.ndarray] = []
+    for vectors_path in sorted(BOOKS_DIR.glob("*.npy")):
+        book_id = int(vectors_path.stem)
+        chunks_path = BOOKS_DIR / f"{book_id}.chunks.json"
+        if (book_ids and book_id not in book_ids) or not chunks_path.exists():
+            continue
+        meta_path = BOOKS_DIR / f"{book_id}.meta.json"
+        meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
+        title, author = meta.get("title", str(book_id)), meta.get("author", "")
+        for c in json.loads(chunks_path.read_text()):
+            passages.append(Passage(title, author, c["label"], c["text"]))
+        matrices.append(np.load(vectors_path))
+    return passages, np.vstack(matrices) if matrices else np.empty((0, 0))
+
+
+def ask(query: str, book_ids: list[int] | None = None, k: int = 5) -> None:
+    passages, vectors = load_library(book_ids)
+    if not passages:
+        print("No indexed books found. Run: uv run main.py index")
+        return
+
+    results = retrieve(query, vectors, k)
+    print(f'\nPassages for "{query}":\n')
     for rank, (i, score) in enumerate(results, 1):
-        chunk = chunks[i]
-        location = f"{chunk.label} — " if chunk.label else ""
-        print(f"  {rank}  [{score:.2f}]  {location}{preview(chunk.text)}")
+        passage = passages[i]
+        print(f"  {rank}  [{score:.2f}]  {passage.cite()}")
+        print(f"        {preview(passage.text)}\n")
 
-    choice = input("\npick a number to deep read (enter to skip) > ").strip()
+    choice = input("pick a number to deep read (enter to skip) > ").strip()
     if choice.isdigit() and 1 <= int(choice) <= len(results):
-        chunk = chunks[results[int(choice) - 1][0]]
+        passage = passages[results[int(choice) - 1][0]]
         print("\n" + "=" * 70)
-        if chunk.label:
-            print(f"[{chunk.label}]\n")
-        print(chunk.text)
+        print(f"{passage.cite()}\n")
+        print(passage.text)
         print("=" * 70)
 
 
 def run_search(term: str) -> None:
-    for book in search_book(term):
+    books = search_book(term)
+    if not books:
+        print("No results found.")
+        return
+    for book in books:
         print(f"Title: {book.title}")
         print(f"Authors: {', '.join(book.authors)}")
         print(
@@ -191,32 +260,47 @@ def run_search(term: str) -> None:
             f"languages: {', '.join(book.languages)}"
         )
         print("-" * 40)
-    else:
-        print("No results found.")
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Search Gutenberg, fetch and query books."
+        description="Semantic search over a curated literary canon."
     )
-    parser.add_argument("query", nargs="+", help="search term, or a book ID to fetch")
-    parser.add_argument(
-        "--ask", metavar="QUERY", help="find passages in a book (needs a book ID)"
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_search = sub.add_parser("search", help="find a book's id on Gutenberg")
+    p_search.add_argument("terms", nargs="+")
+
+    p_fetch = sub.add_parser("fetch", help="download one book to books/")
+    p_fetch.add_argument("book_id", type=int)
+
+    p_index = sub.add_parser("index", help="chunk + embed books into the library")
+    p_index.add_argument(
+        "book_ids",
+        nargs="*",
+        type=int,
+        help="ids to add; omit to index all of library.txt",
     )
+
+    p_ask = sub.add_parser(
+        "ask", help="find passages across the library for a question"
+    )
+    p_ask.add_argument("query")
+    p_ask.add_argument("--book", type=int, help="limit the search to one book id")
+    p_ask.add_argument("-k", type=int, default=5, help="how many passages to return")
+
     args = parser.parse_args(argv)
 
-    term = " ".join(args.query)
-    if term.isdigit():
-        book_id = int(term)
-        if args.ask:
-            ask_book(book_id, args.ask)
-        else:
-            saved_book_path = save_book(book_id)
-            print(f"Saved book {book_id} to {saved_book_path}")
-    else:
-        if args.ask:
-            parser.error("--ask needs a book ID, not a search term")
-        run_search(term)
+    if args.command == "search":
+        run_search(" ".join(args.terms))
+    elif args.command == "fetch":
+        print(f"Saved to {save_book(args.book_id)}")
+    elif args.command == "index":
+        if args.book_ids:
+            add_to_library(args.book_ids)
+        index_books(args.book_ids or read_library())
+    elif args.command == "ask":
+        ask(args.query, [args.book] if args.book else None, args.k)
 
 
 if __name__ == "__main__":
