@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>classics — search the canon by meaning</title>
+    <style>
+      :root {
+        --ink: #2b2622;
+        --paper: #f5f1e8;
+        --card: #fffdf8;
+        --rule: #e2d9c8;
+        --muted: #8a7f6f;
+        --accent: #8a5a2b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+        line-height: 1.6;
+      }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 4rem 1.25rem 6rem; }
+      header { text-align: center; margin-bottom: 2.5rem; }
+      h1 { font-size: 2.4rem; margin: 0 0 0.3rem; letter-spacing: 0.5px; }
+      .tagline { color: var(--muted); font-style: italic; margin: 0; }
+      form { display: flex; gap: 0.5rem; margin: 2rem 0 0.5rem; }
+      input[type="search"] {
+        flex: 1;
+        padding: 0.85rem 1rem;
+        font: inherit;
+        background: var(--card);
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        color: var(--ink);
+      }
+      input[type="search"]:focus { outline: 2px solid var(--accent); border-color: transparent; }
+      button {
+        padding: 0.85rem 1.4rem;
+        font: inherit;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .hint { color: var(--muted); font-size: 0.85rem; font-style: italic; margin: 0 0 2rem; }
+      .status { color: var(--muted); text-align: center; padding: 2rem 0; }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--rule);
+        border-radius: 10px;
+        padding: 1.1rem 1.3rem;
+        margin-bottom: 1rem;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      .card:hover { border-color: var(--accent); box-shadow: 0 2px 14px rgba(0, 0, 0, 0.05); }
+      .head { cursor: pointer; }
+      .cite { display: flex; align-items: baseline; gap: 0.6rem; }
+      .score {
+        font-size: 0.72rem;
+        color: var(--accent);
+        background: #f0e6d6;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .where { font-weight: 600; }
+      .preview { color: var(--muted); margin: 0.5rem 0 0; font-style: italic; }
+      .full { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+      .full[hidden] { display: none; }
+      .full p {
+        margin: 0 0 1.1rem;
+        font-size: 1.08rem;
+        line-height: 1.78;
+        max-width: 62ch;
+        hyphens: auto;
+      }
+      .full p:first-letter { /* gentle lead-in, not a full drop cap */ }
+      .full .read-hint { color: var(--muted); font-style: italic; font-size: 0.82rem; margin-bottom: 1rem; }
+      ::selection { background: #e7d4b8; }
+
+      .float-share {
+        position: absolute;
+        z-index: 30;
+        padding: 0.45rem 0.85rem;
+        font-size: 0.85rem;
+        border-radius: 999px;
+        background: var(--ink);
+        color: #fff;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        white-space: nowrap;
+      }
+      .float-share[hidden] { display: none; }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(20, 16, 12, 0.72);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.2rem;
+        padding: 1.5rem;
+        z-index: 40;
+      }
+      .overlay[hidden] { display: none; }
+      .overlay img { max-width: min(92vw, 540px); max-height: 70vh; border-radius: 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4); }
+      .overlay .row { display: flex; gap: 0.7rem; }
+      .overlay .ghost { background: transparent; border: 1px solid rgba(255, 255, 255, 0.5); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>classics</h1>
+        <p class="tagline">Bring a question. Get the passage that means it.</p>
+      </header>
+
+      <form id="form">
+        <input
+          id="q"
+          type="search"
+          placeholder="how do I face death without fear?"
+          autocomplete="off"
+          autofocus
+        />
+        <button type="submit">Ask</button>
+      </form>
+      <p class="hint">
+        Ask timeless human questions in plain words — death, love, fear, meaning, ambition.
+      </p>
+
+      <div id="results"></div>
+    </div>
+
+    <button id="floatShare" class="float-share" hidden>Share as image</button>
+
+    <div id="overlay" class="overlay" hidden>
+      <img id="overlayImg" alt="shareable quote" />
+      <div class="row">
+        <button id="download">Download</button>
+        <button id="closeOverlay" class="ghost">Close</button>
+      </div>
+    </div>
+
+    <script>
+      const COLORS = {
+        ink: "#2b2622", paper: "#f5f1e8", card: "#fffdf8",
+        rule: "#d9ccb4", muted: "#8a7f6f", accent: "#8a5a2b",
+      };
+
+      const form = document.getElementById("form");
+      const input = document.getElementById("q");
+      const results = document.getElementById("results");
+      const floatShare = document.getElementById("floatShare");
+      const overlay = document.getElementById("overlay");
+      const overlayImg = document.getElementById("overlayImg");
+
+      let selection = null; // { text, author, title }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const q = input.value.trim();
+        if (!q) return;
+        results.innerHTML = `<p class="status">Reading the canon…</p>`;
+        try {
+          const res = await fetch(`/api/ask?q=${encodeURIComponent(q)}`);
+          render(q, await res.json());
+        } catch {
+          results.innerHTML = `<p class="status">Something went wrong. Try again.</p>`;
+        }
+      });
+
+      function render(q, matches) {
+        if (!matches.length) {
+          results.innerHTML = `<p class="status">Nothing strong enough for “${escapeHtml(
+            q
+          )}”. Try rephrasing toward a timeless theme.</p>`;
+          return;
+        }
+        results.innerHTML = "";
+        for (const m of matches) {
+          const card = document.createElement("div");
+          card.className = "card";
+          const paras = m.text
+            .split(/\n{2,}/)
+            .map((p) => p.trim())
+            .filter(Boolean)
+            .map((p) => `<p>${escapeHtml(p)}</p>`)
+            .join("");
+          card.innerHTML = `
+            <div class="head">
+              <div class="cite">
+                <span class="score">${m.score.toFixed(2)}</span>
+                <span class="where">${escapeHtml(m.cite)}</span>
+              </div>
+              <p class="preview">${escapeHtml(preview(m.text))}</p>
+            </div>
+            <div class="full" hidden data-author="${escapeHtml(m.author)}" data-title="${escapeHtml(
+            m.title
+          )}">
+              <p class="read-hint">Select any lines to share them as an image.</p>
+              ${paras}
+            </div>`;
+          const full = card.querySelector(".full");
+          card.querySelector(".head").addEventListener("click", () => {
+            full.hidden = !full.hidden;
+          });
+          results.appendChild(card);
+        }
+      }
+
+      document.addEventListener("mouseup", () => setTimeout(updateFloat, 0));
+      document.addEventListener("scroll", () => (floatShare.hidden = true), true);
+
+      function updateFloat() {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) {
+          floatShare.hidden = true;
+          return;
+        }
+        const node = sel.anchorNode;
+        const full = node && (node.nodeType === 1 ? node : node.parentElement)?.closest(".full");
+        const text = sel.toString().trim();
+        if (!full || !text) {
+          floatShare.hidden = true;
+          return;
+        }
+        selection = { text, author: full.dataset.author, title: full.dataset.title };
+        const r = sel.getRangeAt(0).getBoundingClientRect();
+        floatShare.style.top = `${window.scrollY + r.top - 42}px`;
+        floatShare.style.left = `${window.scrollX + r.left}px`;
+        floatShare.hidden = false;
+      }
+
+      floatShare.addEventListener("mousedown", (e) => e.preventDefault());
+      floatShare.addEventListener("click", () => {
+        if (selection) openOverlay(renderImage(selection));
+        floatShare.hidden = true;
+      });
+
+      function openOverlay(canvas) {
+        overlayImg.src = canvas.toDataURL("image/png");
+        overlay.hidden = false;
+        canvas.toBlob((blob) => {
+          navigator.clipboard
+            ?.write?.([new ClipboardItem({ "image/png": blob })])
+            .catch(() => {});
+        }, "image/png");
+        document.getElementById("download").onclick = () => {
+          const a = document.createElement("a");
+          a.href = overlayImg.src;
+          a.download = "classics-quote.png";
+          a.click();
+        };
+      }
+      document.getElementById("closeOverlay").onclick = () => (overlay.hidden = true);
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.hidden = true;
+      });
+
+      function renderImage({ text, author, title }) {
+        const scale = 2;
+        const W = 1080;
+        const pad = 96;
+        const maxW = W - pad * 2;
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        const quoteFont = "italic 46px Georgia, serif";
+        const attrFont = "27px Georgia, serif";
+        const quoteLH = 66;
+        const attrLH = 38;
+
+        const quoteLines = wrap(ctx, `“${squish(text)}”`, quoteFont, maxW);
+        const attribution = `— ${[humanize(author), title].filter(Boolean).join(", ")}`;
+        const attrLines = wrap(ctx, attribution, attrFont, maxW);
+
+        let y = pad + 18; // brand baseline
+        y += 56; // gap below wordmark
+        const quoteTop = y;
+        y += quoteLines.length * quoteLH;
+        y += 44;
+        const attrTop = y;
+        y += attrLines.length * attrLH;
+        const H = y + 96; // bottom mark + padding
+
+        canvas.width = W * scale;
+        canvas.height = H * scale;
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = COLORS.card;
+        ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = COLORS.rule;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(28, 28, W - 56, H - 56);
+
+        ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = COLORS.muted;
+        ctx.font = "600 30px Georgia, serif";
+        ctx.letterSpacing = "6px";
+        ctx.fillText("CLASSICS", pad, pad + 18);
+        ctx.letterSpacing = "0px";
+
+        ctx.fillStyle = COLORS.ink;
+        ctx.font = quoteFont;
+        quoteLines.forEach((line, i) => ctx.fillText(line, pad, quoteTop + (i + 1) * quoteLH - 18));
+
+        ctx.fillStyle = COLORS.accent;
+        ctx.font = attrFont;
+        attrLines.forEach((line, i) => ctx.fillText(line, pad, attrTop + (i + 1) * attrLH - 10));
+
+        ctx.fillStyle = COLORS.muted;
+        ctx.font = "22px Georgia, serif";
+        ctx.textAlign = "right";
+        ctx.fillText("belderbos.dev", W - pad, H - pad + 26);
+        ctx.textAlign = "left";
+
+        return canvas;
+      }
+
+      function wrap(ctx, text, font, maxWidth) {
+        ctx.font = font;
+        const lines = [];
+        let cur = "";
+        for (const word of text.split(/\s+/)) {
+          const test = cur ? `${cur} ${word}` : word;
+          if (ctx.measureText(test).width > maxWidth && cur) {
+            lines.push(cur);
+            cur = word;
+          } else {
+            cur = test;
+          }
+        }
+        if (cur) lines.push(cur);
+        return lines;
+      }
+
+      function squish(s) { return s.replace(/\s+/g, " ").trim(); }
+
+      function humanize(a) {
+        if ((a.match(/,/g) || []).length === 1) {
+          const [last, first] = a.split(",").map((s) => s.trim());
+          return `${first} ${last}`;
+        }
+        return a;
+      }
+
+      function preview(text, width = 150) {
+        const line = squish(text);
+        return line.length > width ? line.slice(0, width) + "…" : line;
+      }
+
+      function escapeHtml(s) {
+        const div = document.createElement("div");
+        div.textContent = s;
+        return div.innerHTML;
+      }
+    </script>
+  </body>
+</html>
