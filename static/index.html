@@ -78,6 +78,7 @@
       button:disabled { opacity: 0.5; cursor: default; }
       .hint { color: var(--muted); font-size: 0.85rem; font-style: italic; margin: 0 0 2rem; }
       .status { color: var(--muted); text-align: center; padding: 2rem 0; }
+      .found { color: var(--muted); font-style: italic; font-size: 0.85rem; margin: 0 0 1rem; }
       #pitch { margin: 2.5rem 0 1rem; }
       #pitch[hidden] { display: none; }
       .pitch-lead { font-style: italic; color: var(--muted); margin: 0 0 1rem; text-align: center; }
@@ -90,6 +91,24 @@
         line-height: 1.6;
       }
       #pitch b { color: var(--accent); font-weight: 600; }
+      .examples { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 2rem; }
+      .chip {
+        padding: 0.4rem 0.85rem;
+        font-size: 0.88rem;
+        background: var(--card);
+        color: var(--accent);
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+      }
+      .chip:hover { border-color: var(--accent); }
+      .more {
+        display: block;
+        margin: 0.5rem auto 0;
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--rule);
+      }
+      .more:hover { border-color: var(--accent); }
       .card {
         background: var(--card);
         border: 1px solid var(--rule);
@@ -101,14 +120,6 @@
       .card:hover { border-color: var(--accent); box-shadow: 0 2px 14px rgba(0, 0, 0, 0.05); }
       .head { cursor: pointer; }
       .cite { display: flex; align-items: baseline; gap: 0.6rem; }
-      .score {
-        font-size: 0.72rem;
-        color: var(--accent);
-        background: var(--pill);
-        padding: 0.1rem 0.45rem;
-        border-radius: 999px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      }
       .where { font-weight: 600; }
       .preview { color: var(--muted); margin: 0.5rem 0 0; font-style: italic; }
       .full { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
@@ -131,7 +142,7 @@
         padding: 0.45rem 0.85rem;
         font-size: 0.85rem;
         border-radius: 999px;
-        background: var(--ink);
+        background: #2b2622;
         color: #fff;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
         white-space: nowrap;
@@ -187,6 +198,14 @@
       </p>
 
       <section id="pitch">
+        <p class="pitch-lead">Not sure where to start? Try one:</p>
+        <div class="examples">
+          <button class="chip">How do I stop fearing death?</button>
+          <button class="chip">Why do I feel envy when my friend succeeds?</button>
+          <button class="chip">Is it better to be feared or loved?</button>
+          <button class="chip">How can suffering have meaning?</button>
+          <button class="chip">How do I let go of someone I loved?</button>
+        </div>
         <p class="pitch-lead">Why not just ask ChatGPT?</p>
         <ul>
           <li><b>It never writes a word.</b> Every answer is a real passage you can open to the exact chapter — nothing invented, nothing misattributed.</li>
@@ -237,28 +256,40 @@
         paintToggle();
       });
 
-      form.addEventListener("submit", async (e) => {
+      form.addEventListener("submit", (e) => {
         e.preventDefault();
         const q = input.value.trim();
-        if (!q) return;
+        if (q) search(q);
+      });
+
+      document.querySelectorAll(".chip").forEach((chip) =>
+        chip.addEventListener("click", () => {
+          input.value = chip.textContent;
+          search(chip.textContent);
+        })
+      );
+
+      async function search(q, expanded = false) {
         document.getElementById("pitch").hidden = true;
         results.innerHTML = `<p class="status">Reading the canon…</p>`;
+        const params = expanded ? "&k=15&per_book=4&floor=0.4" : "";
         try {
-          const res = await fetch(`/api/ask?q=${encodeURIComponent(q)}`);
-          render(q, await res.json());
+          const res = await fetch(`/api/ask?q=${encodeURIComponent(q)}${params}`);
+          render(q, await res.json(), expanded);
         } catch {
           results.innerHTML = `<p class="status">Something went wrong. Try again.</p>`;
         }
-      });
+      }
 
-      function render(q, matches) {
+      function render(q, matches, expanded = false) {
         if (!matches.length) {
           results.innerHTML = `<p class="status">Nothing strong enough for “${escapeHtml(
             q
           )}”. Try rephrasing toward a timeless theme.</p>`;
           return;
         }
-        results.innerHTML = "";
+        const n = matches.length;
+        results.innerHTML = `<p class="found">${n} echo${n > 1 ? "es" : ""} from across the canon</p>`;
         activeQuery = q;
         for (const m of matches) {
           const card = document.createElement("div");
@@ -269,7 +300,6 @@
           card.innerHTML = `
             <div class="head">
               <div class="cite">
-                <span class="score">${m.score.toFixed(2)}</span>
                 <span class="where">${escapeHtml(m.cite)}</span>
               </div>
               <p class="preview">${escapeHtml(preview(m.text))}</p>
@@ -285,6 +315,13 @@
             full.hidden = !full.hidden;
           });
           results.appendChild(card);
+        }
+        if (!expanded && n >= 5) {
+          const more = document.createElement("button");
+          more.className = "more";
+          more.textContent = "Show more from the canon";
+          more.addEventListener("click", () => search(q, true));
+          results.appendChild(more);
         }
       }
 
