@@ -48,6 +48,18 @@
       button:disabled { opacity: 0.5; cursor: default; }
       .hint { color: var(--muted); font-size: 0.85rem; font-style: italic; margin: 0 0 2rem; }
       .status { color: var(--muted); text-align: center; padding: 2rem 0; }
+      #pitch { margin: 2.5rem 0 1rem; }
+      #pitch[hidden] { display: none; }
+      .pitch-lead { font-style: italic; color: var(--muted); margin: 0 0 1rem; text-align: center; }
+      #pitch ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.9rem; }
+      #pitch li {
+        background: var(--card);
+        border: 1px solid var(--rule);
+        border-radius: 10px;
+        padding: 0.9rem 1.1rem;
+        line-height: 1.6;
+      }
+      #pitch b { color: var(--accent); font-weight: 600; }
       .card {
         background: var(--card);
         border: 1px solid var(--rule);
@@ -135,6 +147,16 @@
         Ask timeless human questions in plain words — death, love, fear, meaning, ambition.
       </p>
 
+      <section id="pitch">
+        <p class="pitch-lead">Why not just ask ChatGPT?</p>
+        <ul>
+          <li><b>It never writes a word.</b> Every answer is a real passage you can open to the exact chapter — nothing invented, nothing misattributed.</li>
+          <li><b>The weight is in the source.</b> Aurelius, Dostoevsky, Seneca — minds that lived it and outlived us, not one flattened helpful-assistant voice.</li>
+          <li><b>A discovery engine, not an answer machine.</b> Find something you didn't know existed, and a book to read next.</li>
+          <li><b>It confronts instead of coddles.</b> The canon was written to challenge you, not to please you.</li>
+        </ul>
+      </section>
+
       <div id="results"></div>
     </div>
 
@@ -169,6 +191,7 @@
         e.preventDefault();
         const q = input.value.trim();
         if (!q) return;
+        document.getElementById("pitch").hidden = true;
         results.innerHTML = `<p class="status">Reading the canon…</p>`;
         try {
           const res = await fetch(`/api/ask?q=${encodeURIComponent(q)}`);
