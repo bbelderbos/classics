@@ -46,3 +46,16 @@
 4300    # Ulysses
 11000   # An Old Babylonian Version of the Gilgamesh Epic
 8800    # The divine comedy
+1727    # The Odyssey: Rendered into English prose
+16328   # Beowulf
+27761   # Hamlet
+1998    # Thus Spake Zarathustra (Nietzsche)
+4363    # Beyond Good and Evil
+46333   # The Social Contract
+3207    # Leviathan
+19942   # Candide
+600     # Notes from the Underground
+26      # Paradise Lost
+768     # Wuthering Heights
+2413    # Madame Bovary
+47935   # Fathers and Sons
