@@ -299,6 +299,23 @@ def load_library(book_ids: list[int] | None = None) -> tuple[list[Passage], np.n
     return passages, np.vstack(matrices) if matrices else np.empty((0, 0))
 
 
+def search_passages(
+    query: str,
+    passages: list[Passage],
+    vectors: np.ndarray,
+    k: int = 5,
+    per_book: int = 2,
+    floor: float = 0.6,
+) -> list[tuple[int, float]]:
+    pool = retrieve(query, vectors, k=min(len(passages), 200))
+    if floor > 0 and pool:
+        cutoff = (
+            floor * pool[0][1]
+        )  # relative to the best match, so it scales per query
+        pool = [(i, s) for i, s in pool if s >= cutoff]
+    return diversify(pool, lambda i: passages[i].title, k, per_book)
+
+
 def ask(
     query: str,
     book_ids: list[int] | None = None,
@@ -311,13 +328,7 @@ def ask(
         print("No indexed books found. Run: uv run main.py index")
         return
 
-    pool = retrieve(query, vectors, k=min(len(passages), 200))
-    if floor > 0 and pool:
-        cutoff = (
-            floor * pool[0][1]
-        )  # relative to the best match, so it scales per query
-        pool = [(i, s) for i, s in pool if s >= cutoff]
-    results = diversify(pool, lambda i: passages[i].title, k, per_book)
+    results = search_passages(query, passages, vectors, k, per_book, floor)
     if not results:
         print(f'\nNothing strong enough for "{query}".')
         return
@@ -349,14 +360,15 @@ def ask(
                 padding=(1, 2),
             )
         )
-        if input("copy as a shareable quote? [y/N] > ").strip().lower() == "y":
-            quote = passage.share(best_excerpt(passage.text, query))
+        quote = passage.share(best_excerpt(passage.text, query))
+        console.print("\n[bold]Shareable quote:[/]\n")
+        console.print(quote)
+        if input("\ncopy to clipboard? [y/N] > ").strip().lower() == "y":
             try:
                 pyperclip.copy(quote)
-                console.print("\n[green]copied to clipboard:[/]\n")
+                console.print("[green]copied[/]")
             except pyperclip.PyperclipException:
-                console.print("\n[yellow]no clipboard available — here it is:[/]\n")
-            console.print(quote)
+                console.print("[yellow]no clipboard available — copy it from above[/]")
 
 
 def run_search(term: str) -> None:
