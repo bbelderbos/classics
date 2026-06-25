@@ -12,6 +12,18 @@
         --rule: #e2d9c8;
         --muted: #8a7f6f;
         --accent: #8a5a2b;
+        --pill: #f0e6d6;
+        --select: #e7d4b8;
+      }
+      :root[data-theme="dark"] {
+        --ink: #e8e1d4;
+        --paper: #17140f;
+        --card: #211c16;
+        --rule: #3a342a;
+        --muted: #9b9082;
+        --accent: #cc9152;
+        --pill: #3a2f20;
+        --select: #4a3a26;
       }
       * { box-sizing: border-box; }
       body {
@@ -20,7 +32,25 @@
         color: var(--ink);
         font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
         line-height: 1.6;
+        transition: background 0.2s, color 0.2s;
       }
+      .theme-toggle {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        width: 2.4rem;
+        height: 2.4rem;
+        padding: 0;
+        font-size: 1.05rem;
+        line-height: 1;
+        background: var(--card);
+        color: var(--ink);
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+        cursor: pointer;
+        z-index: 50;
+      }
+      .theme-toggle:hover { border-color: var(--accent); }
       .wrap { max-width: 720px; margin: 0 auto; padding: 4rem 1.25rem 6rem; }
       header { text-align: center; margin-bottom: 2.5rem; }
       h1 { font-size: 2.4rem; margin: 0 0 0.3rem; letter-spacing: 0.5px; }
@@ -74,7 +104,7 @@
       .score {
         font-size: 0.72rem;
         color: var(--accent);
-        background: #f0e6d6;
+        background: var(--pill);
         padding: 0.1rem 0.45rem;
         border-radius: 999px;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -92,8 +122,8 @@
       }
       .full p:first-letter { /* gentle lead-in, not a full drop cap */ }
       .full .read-hint { color: var(--muted); font-style: italic; font-size: 0.82rem; margin-bottom: 1rem; }
-      .full mark { background: #f0e6d6; color: inherit; padding: 0.05em 0.12em; border-radius: 3px; }
-      ::selection { background: #e7d4b8; }
+      .full mark { background: var(--pill); color: inherit; padding: 0.05em 0.12em; border-radius: 3px; }
+      ::selection { background: var(--select); }
 
       .float-share {
         position: absolute;
@@ -125,8 +155,17 @@
       .overlay .row { display: flex; gap: 0.7rem; }
       .overlay .ghost { background: transparent; border: 1px solid rgba(255, 255, 255, 0.5); }
     </style>
+    <script>
+      // apply theme before paint to avoid a flash
+      (() => {
+        const saved = localStorage.getItem("theme");
+        const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        if (dark) document.documentElement.dataset.theme = "dark";
+      })();
+    </script>
   </head>
   <body>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">☾</button>
     <div class="wrap">
       <header>
         <h1>classics</h1>
@@ -186,6 +225,17 @@
 
       let selection = null; // { text, author, title, query }
       let activeQuery = "";
+
+      const themeToggle = document.getElementById("themeToggle");
+      const paintToggle = () =>
+        (themeToggle.textContent = document.documentElement.dataset.theme === "dark" ? "☀" : "☾");
+      paintToggle();
+      themeToggle.addEventListener("click", () => {
+        const dark = document.documentElement.dataset.theme === "dark";
+        document.documentElement.dataset.theme = dark ? "" : "dark";
+        localStorage.setItem("theme", dark ? "light" : "dark");
+        paintToggle();
+      });
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -268,9 +318,20 @@
 
       floatShare.addEventListener("mousedown", (e) => e.preventDefault());
       floatShare.addEventListener("click", () => {
-        if (selection) openOverlay(renderImage(selection));
+        if (selection) {
+          openOverlay(renderImage(selection));
+          logQuote(selection);
+        }
         floatShare.hidden = true;
       });
+
+      function logQuote({ text, author, title, query }) {
+        fetch("/api/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, author, title, query }),
+        }).catch(() => {});
+      }
 
       function openOverlay(canvas) {
         overlayImg.src = canvas.toDataURL("image/png");

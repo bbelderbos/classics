@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from db import QuoteEvent, SearchEvent, init_db, record
 from main import (
     Passage,
     best_excerpt,
@@ -19,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="classics")
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
+
+init_db()
 
 
 @cache
@@ -48,6 +51,7 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
     if not passages:
         return []
     ranked = search_passages(q, passages, vectors, k, per_book, floor)
+    record(SearchEvent(query=q, results=len(ranked)))
     return [
         Match(
             rank=rank,
@@ -61,3 +65,23 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
         )
         for rank, (i, score) in enumerate(ranked, 1)
     ]
+
+
+class QuoteIn(BaseModel):
+    query: str = ""
+    author: str = ""
+    title: str = ""
+    text: str
+
+
+@app.post("/api/quote")
+def quote(body: QuoteIn) -> dict[str, bool]:
+    record(
+        QuoteEvent(
+            query=body.query,
+            author=body.author,
+            title=body.title,
+            text=body.text,
+        )
+    )
+    return {"ok": True}
