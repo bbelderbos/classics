@@ -2,6 +2,7 @@ import numpy as np
 
 from main import (
     Passage,
+    best_excerpt,
     chunk_text,
     diversify,
     humanize_author,
@@ -119,3 +120,18 @@ def test_passage_share_quotes_text_and_attributes():
     assert p.share() == "“the just man”\n\n— Plato, The Republic (BOOK II)"
     bare = Passage("Walden", "", "", "wild\nthings")
     assert bare.share() == "“wild things”\n\n— Walden"
+
+
+def test_best_excerpt_picks_query_relevant_sentence(monkeypatch):
+    text = "Alpha beta gamma. The cat sat on the mat. Delta epsilon zeta."
+    vectors = {
+        "Alpha beta gamma.": [1.0, 0.0],
+        "The cat sat on the mat.": [0.0, 1.0],
+        "Delta epsilon zeta.": [1.0, 0.0],
+        "cats": [0.0, 1.0],
+    }
+    monkeypatch.setattr(
+        "main.embed", lambda texts: np.array([vectors[t] for t in texts])
+    )
+    # the word budget keeps it to the single best-matching sentence
+    assert best_excerpt(text, "cats", max_words=6) == "The cat sat on the mat."
