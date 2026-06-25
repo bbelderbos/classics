@@ -20,7 +20,7 @@ SEARCH_URL = "https://gutendex.com/books/?search="
 BOOK_URL = "https://gutendex.com/books/"
 BOOKS_DIR = Path("books")
 LIBRARY_FILE = Path("library.txt")
-EMBED_MODEL = "all-MiniLM-L6-v2"
+EMBED_MODEL = "all-mpnet-base-v2"
 
 
 class Book(NamedTuple):
@@ -213,9 +213,11 @@ def index_books(book_ids: list[int]) -> None:
             text_path = BOOKS_DIR / f"{book_id}.txt"
             if not text_path.exists():
                 save_book(book_id)
-            title, author = book_metadata(book_id)
-            BOOKS_DIR.mkdir(exist_ok=True)
-            meta_path.write_text(json.dumps({"title": title, "author": author}))
+            if not meta_path.exists():
+                title, author = book_metadata(book_id)
+                BOOKS_DIR.mkdir(exist_ok=True)
+                meta_path.write_text(json.dumps({"title": title, "author": author}))
+            title = json.loads(meta_path.read_text())["title"]
             if built:
                 print(f"  ~ {book_id} {title} (metadata backfilled)")
             else:
@@ -244,7 +246,11 @@ def load_library(book_ids: list[int] | None = None) -> tuple[list[Passage], np.n
 
 
 def ask(
-    query: str, book_ids: list[int] | None = None, k: int = 5, per_book: int = 2
+    query: str,
+    book_ids: list[int] | None = None,
+    k: int = 5,
+    per_book: int = 2,
+    floor: float = 0.6,
 ) -> None:
     passages, vectors = load_library(book_ids)
     if not passages:
@@ -252,7 +258,15 @@ def ask(
         return
 
     pool = retrieve(query, vectors, k=min(len(passages), 200))
+    if floor > 0 and pool:
+        cutoff = (
+            floor * pool[0][1]
+        )  # relative to the best match, so it scales per query
+        pool = [(i, s) for i, s in pool if s >= cutoff]
     results = diversify(pool, lambda i: passages[i].title, k, per_book)
+    if not results:
+        print(f'\nNothing strong enough for "{query}".')
+        return
     print(f'\nPassages for "{query}":\n')
     for rank, (i, score) in enumerate(results, 1):
         passage = passages[i]
@@ -312,6 +326,12 @@ def main(argv: list[str] | None = None) -> None:
     p_ask.add_argument(
         "--per-book", type=int, default=2, help="max passages per book (0 = no cap)"
     )
+    p_ask.add_argument(
+        "--floor",
+        type=float,
+        default=0.6,
+        help="drop matches below this fraction of the top score (0 = keep all)",
+    )
 
     args = parser.parse_args(argv)
 
@@ -324,7 +344,13 @@ def main(argv: list[str] | None = None) -> None:
             add_to_library(args.book_ids)
         index_books(args.book_ids or read_library())
     elif args.command == "ask":
-        ask(args.query, [args.book] if args.book else None, args.k, args.per_book)
+        ask(
+            args.query,
+            [args.book] if args.book else None,
+            args.k,
+            args.per_book,
+            args.floor,
+        )
 
 
 if __name__ == "__main__":
