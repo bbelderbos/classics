@@ -37,3 +37,12 @@
 46389   # Confucius — The Sayings of Confucius
 64576   # Seneca — Minor Dialogues
 75802   # Hesse — Der Steppenwolf
+2638    # The Idiot by Fyodor Dostoyevsky
+38427   # The World as Will and Idea (1 of 3)
+40097   # The World as Will and Idea (2 of 3)
+40868   # The World as Will and Idea (3 of 3)
+996     # Don Quixote
+1399    # Anna Karenina
+4300    # Ulysses
+11000   # An Old Babylonian Version of the Gilgamesh Epic
+8800    # The divine comedy
