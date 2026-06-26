@@ -21,6 +21,38 @@ no network at query time) and matched with plain NumPy cosine similarity.
 
 The library is just `library.txt`: a list of Gutenberg IDs you grow over time.
 
+## Architecture
+
+The same core lives in `main.py` (chunk, embed, search) and is exposed two ways: the CLI above,
+and a thin FastAPI shell in `web.py` that serves a browser UI. The library matrix is loaded once
+and cached in memory; only the query is embedded per request. Searches and saved quotes are
+recorded to a local SQLite database (`classics.db`) via SQLModel.
+
+```
+[ Browser / static/index.html ]
+    │                ▲
+    │ GET /api/ask   │ JSON array of Match objects
+    │ POST /api/quote│
+    ▼                │
+ ┌─────────────────────────────────────────────────┐
+ │ web.py  (FastAPI — thin shell)                   │
+ │                                                  │
+ │  GET  /          → static/index.html             │
+ │  GET  /api/ask   → search_passages(...) ──┐      │
+ │  POST /api/quote → record(QuoteEvent)     │      │
+ │                                           │      │
+ │  @cache library() ─► load_library() ─► in-memory │
+ │                                     passages +   │
+ │                                     vectors (np) │
+ └───────────────────────────┬──────────────────────┘
+                 imports core │ ▼ record(SearchEvent / QuoteEvent)
+       ┌──────────────────────┐  ┌──────────────────┐
+       │ main.py (core logic) │  │ db.py → SQLite    │
+       │ chunk · embed ·      │  │ classics.db       │
+       │ search_passages      │  │ (SQLModel)        │
+       └──────────────────────┘  └──────────────────┘
+```
+
 ## Setup
 
 ```bash
