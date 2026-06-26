@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "fastapi[standard]>=0.138.1",
+    "gunicorn>=26.0.0",
     "mdweaver>=0.3.0",
     "numpy>=2.5.0",
     "pyperclip>=1.11.0",

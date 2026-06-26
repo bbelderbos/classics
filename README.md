@@ -77,6 +77,10 @@ its citation. From there you can:
   chosen excerpts, with the best-matching span underlined.
 - **Share as image** — render a single passage as a shareable card.
 
+<p align="center">
+  <img src="images/pdf-export.png" alt="A typeset Classics PDF: the question as a title, with cited passages and the matching span underlined" width="100%" style="border-radius: 8px; border: 1px solid #30363d; max-width: 800px;">
+</p>
+
 Searches and saved quotes are recorded to `classics.db` (SQLite).
 
 The repo ships a `Justfile` wrapping the common commands — run `just` to list them (`just server`,
