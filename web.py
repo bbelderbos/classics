@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import json
 import logging
 import re
@@ -23,10 +24,15 @@ from main import (
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="classics")
-INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 
-init_db()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="classics", lifespan=lifespan)
+INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 
 
 @cache
