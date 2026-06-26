@@ -1,5 +1,9 @@
 # classics
 
+<p align="center">
+  <img src="images/homepage.png" alt="classics UI header" width="100%" style="border-radius: 8px; border: 1px solid #30363d; max-width: 800px;">
+</p>
+
 Semantic search over a curated library of public-domain literature.
 
 Instead of grepping for words, you bring a *question* — "how should I deal with people who
@@ -28,30 +32,9 @@ and a thin FastAPI shell in `web.py` that serves a browser UI. The library matri
 and cached in memory; only the query is embedded per request. Searches and saved quotes are
 recorded to a local SQLite database (`classics.db`) via SQLModel.
 
-```
-[ Browser / static/index.html ]
-    │                ▲
-    │ GET /api/ask   │ JSON array of Match objects
-    │ POST /api/quote│
-    ▼                │
- ┌─────────────────────────────────────────────────┐
- │ web.py  (FastAPI — thin shell)                   │
- │                                                  │
- │  GET  /          → static/index.html             │
- │  GET  /api/ask   → search_passages(...) ──┐      │
- │  POST /api/quote → record(QuoteEvent)     │      │
- │                                           │      │
- │  @cache library() ─► load_library() ─► in-memory │
- │                                     passages +   │
- │                                     vectors (np) │
- └───────────────────────────┬──────────────────────┘
-                 imports core │ ▼ record(SearchEvent / QuoteEvent)
-       ┌──────────────────────┐  ┌──────────────────┐
-       │ main.py (core logic) │  │ db.py → SQLite    │
-       │ chunk · embed ·      │  │ classics.db       │
-       │ search_passages      │  │ (SQLModel)        │
-       └──────────────────────┘  └──────────────────┘
-```
+<p align="center">
+  <img src="images/architecture.png" alt="Classics Architecture Diagram" width="100%" max-width="800px">
+</p>
 
 ## Setup
 
