@@ -9,7 +9,7 @@ high even when it shares no words with your query.
 
 Everything runs locally. Books come from [Project Gutenberg](https://gutenberg.org) via the
 [Gutendex](https://gutendex.com) API; passages are embedded once with
-[`all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) (no API key,
+[`all-mpnet-base-v2`](https://huggingface.co/sentence-transformers/all-mpnet-base-v2) (no API key,
 no network at query time) and matched with plain NumPy cosine similarity.
 
 ## How it works
