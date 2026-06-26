@@ -58,6 +58,25 @@ wrote about rhetoric and persuasion, Thoreau about honest trade, but never about
 in the books' own terms ("how do I persuade people and win them to my view?") and the same ideas
 surface with much higher scores.
 
+You don't need to match the source text's words — the model handles paraphrase well. You need to
+match the *theme*. Questions that land well:
+
+- *how do I face death without fear?*
+- *is it better to be feared or loved?*
+- *is wealth worth pursuing?*
+- *how do I forgive someone who wronged me?*
+- *what makes a friendship last?*
+- *how do I find courage when I am afraid?*
+
+Modern jargon names a role or activity the canon never knew. Reframe it as the human concern
+underneath, and the score roughly doubles:
+
+| Instead of… (≈0.25) | Ask… (≈0.4+) |
+| --- | --- |
+| how do I market my business? | how do I persuade people and win them to my view? |
+| advice for developers | how do I find meaning and pride in my work? |
+| productivity and time management | is being busy the same as living well? |
+
 Scores are relative: a top match around `0.45+` is strong, while everything clustering at `0.2x`
 usually means the question is off-domain — try rephrasing toward a timeless theme.
 
