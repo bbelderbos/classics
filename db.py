@@ -2,7 +2,7 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlmodel import Field, Session, SQLModel, create_engine, text
+from sqlmodel import Field, Session, SQLModel, create_engine
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +32,6 @@ class QuoteEvent(SQLModel, table=True):
 
 
 def init_db() -> None:
-    with engine.begin() as conn:
-        cols = conn.exec_driver_sql("PRAGMA table_info(searchevent)").fetchall()
-        if any(c[1] == "results" and c[2] == "INTEGER" for c in cols):
-            conn.execute(
-                text("DROP TABLE searchevent")
-            )  # old count schema, rebuild below
     SQLModel.metadata.create_all(engine)
 
 
