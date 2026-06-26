@@ -63,6 +63,25 @@ uv run main.py ask "ivan meets the devil" --book 28054    # limit to one book
 
 `ask` prints the top passages with citations, then lets you pick one to read in full.
 
+### Web UI
+
+```bash
+uv run fastapi dev web.py    # or: just server
+```
+
+Open the printed URL and ask a question in plain words. Each result is a real passage with
+its citation. From there you can:
+
+- **Copy** any passage to the clipboard.
+- **Pick** several passages and **Download PDF** — a typeset A4 sheet of your question and the
+  chosen excerpts, with the best-matching span underlined.
+- **Share as image** — render a single passage as a shareable card.
+
+Searches and saved quotes are recorded to `classics.db` (SQLite).
+
+The repo ships a `Justfile` wrapping the common commands — run `just` to list them (`just server`,
+`just ask "..."`, `just index`, `just fetch <id>`, `just search ...`).
+
 ### Phrasing your question
 
 This searches *what philosophers and novelists actually wrote*, so meet the corpus in its own
