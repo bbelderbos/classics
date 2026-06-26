@@ -126,8 +126,20 @@
       }
       .card:hover { border-color: var(--accent); box-shadow: 0 2px 14px rgba(0, 0, 0, 0.05); }
       .head { cursor: pointer; }
-      .cite { display: flex; align-items: baseline; gap: 0.6rem; }
+      .cite { display: flex; align-items: baseline; gap: 0.6rem; justify-content: space-between; }
       .where { font-weight: 600; }
+      .copy-btn {
+        flex: none;
+        align-self: flex-start;
+        padding: 0.25rem 0.7rem;
+        font-size: 0.78rem;
+        background: var(--card);
+        color: var(--accent);
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+        cursor: pointer;
+      }
+      .copy-btn:hover { border-color: var(--accent); }
       .preview { color: var(--muted); margin: 0.5rem 0 0; font-style: italic; }
       .full { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
       .full[hidden] { display: none; }
@@ -330,6 +342,7 @@
             <div class="head">
               <div class="cite">
                 <span class="where">${escapeHtml(m.cite)}</span>
+                <button class="copy-btn" type="button">Copy</button>
               </div>
               <p class="preview">${escapeHtml(preview(m.text))}</p>
             </div>
@@ -342,6 +355,11 @@
           const full = card.querySelector(".full");
           card.querySelector(".head").addEventListener("click", () => {
             full.hidden = !full.hidden;
+          });
+          const copyBtn = card.querySelector(".copy-btn");
+          copyBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            copyFragment(m, copyBtn);
           });
           results.appendChild(card);
         }
@@ -579,6 +597,29 @@
       }
 
       function words(s) { return (s.match(/\S+/g) || []).length; }
+
+      function copyFragment(m, btn) {
+        const where = [humanize(m.author), m.title].filter(Boolean).join(", ");
+        const attr = where + (m.label ? ` (${m.label})` : "");
+        const payload = `${m.text}\n\n— ${attr}`;
+        navigator.clipboard
+          ?.writeText(payload)
+          .then(() => {
+            flash(btn, "Copied ✓");
+            logQuote({ text: m.text, author: m.author, title: m.title, query: activeQuery });
+          })
+          .catch(() => flash(btn, "Copy failed"));
+      }
+
+      function flash(btn, msg) {
+        const original = btn.textContent;
+        btn.textContent = msg;
+        btn.disabled = true;
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.disabled = false;
+        }, 1200);
+      }
 
       function humanize(a) {
         if ((a.match(/,/g) || []).length === 1) {
