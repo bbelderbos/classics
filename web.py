@@ -18,12 +18,14 @@ from main import (
     Passage,
     best_excerpts,
     humanize_author,
-    load_library,
     reflow,
     search_passages,
+    EMBED_MODEL,
+    load_library,
 )
 
 logger = logging.getLogger(__name__)
+state = {}
 
 
 @asynccontextmanager
@@ -32,7 +34,19 @@ async def lifespan(app: FastAPI):
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
     )
     init_db()
+
+    import sentence_transformers as st
+
+    state["model"] = st.SentenceTransformer(EMBED_MODEL)
+
+    passages, vectors = load_library()
+    state["passages"] = passages
+    state["vectors"] = vectors
+    state["embed"] = lambda texts: state["model"].encode(
+        texts, normalize_embeddings=True
+    )
     yield
+    state.clear()
 
 
 app = FastAPI(title="classics", lifespan=lifespan)
@@ -62,11 +76,19 @@ def home() -> FileResponse:
 
 @app.get("/api/ask")
 def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match]:
-    passages, vectors = library()
-    if not passages:
+    passages, vectors = state.get("passages"), state.get("vectors")
+    if passages is None or vectors is None:
         return []
     t0 = time.perf_counter()
-    ranked = search_passages(q, passages, vectors, k, per_book, floor)
+    ranked = search_passages(
+        q,
+        passages,
+        vectors,
+        k=k,
+        per_book=per_book,
+        floor=floor,
+        embed_fn=state["embed"],
+    )
     t1 = time.perf_counter()
     shown = [
         {
@@ -78,7 +100,9 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
         for i, score in ranked
     ]
     record(SearchEvent(query=q, results=json.dumps(shown)))
-    highlights = best_excerpts([passages[i].text for i, _ in ranked], q)
+    highlights = best_excerpts(
+        [passages[i].text for i, _ in ranked], q, embed_fn=state["embed"]
+    )
     t2 = time.perf_counter()
     logger.info(
         "ask q=%r results=%d search=%.2fs highlight=%.2fs total=%.2fs",

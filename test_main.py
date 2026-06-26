@@ -39,14 +39,14 @@ def test_search_passages_caps_by_author_across_titles(monkeypatch):
         Passage("War and Peace", "Tolstoy, Leo", "", "d"),
     ]
     pool = [(0, 0.9), (1, 0.85), (2, 0.8), (3, 0.75)]
-    monkeypatch.setattr("main.retrieve", lambda q, v, k: pool)
+    monkeypatch.setattr("main.retrieve", lambda q, v, k, embed_fn: pool)
     out = search_passages("q", passages, np.empty((4, 1)), k=5, per_book=2, floor=0)
     assert [i for i, _ in out] == [0, 1, 3]  # Schopenhauer capped at 2, then Tolstoy
 
 
 def test_search_passages_returns_empty_when_best_match_below_min_score(monkeypatch):
     passages = [Passage("Walden", "Thoreau", "", "a")]
-    monkeypatch.setattr("main.retrieve", lambda q, v, k: [(0, 0.28)])
+    monkeypatch.setattr("main.retrieve", lambda q, v, k, embed_fn: [(0, 0.28)])
     assert search_passages("buy bitcoin", passages, np.empty((1, 1))) == []
 
 

@@ -132,8 +132,15 @@ def embed(texts: list[str]) -> np.ndarray:
     return _model().encode(texts, normalize_embeddings=True)
 
 
-def retrieve(query: str, vectors: np.ndarray, k: int = 5) -> list[tuple[int, float]]:
-    scores = vectors @ embed([query])[0]
+def retrieve(
+    query: str,
+    vectors: np.ndarray,
+    *,
+    k: int = 5,
+    embed_fn: Callable[[list[str]], np.ndarray] | None = None,
+) -> list[tuple[int, float]]:
+    fn = embed_fn if embed_fn is not None else embed
+    scores = vectors @ fn([query])[0]
     top = np.argsort(scores)[::-1][:k]
     return [(int(i), float(scores[i])) for i in top]
 
@@ -207,12 +214,18 @@ def best_excerpt(text: str, query: str, max_words: int = 60) -> str:
     return _grow_window(sentences, scores, max_words)
 
 
-def best_excerpts(texts: list[str], query: str, max_words: int = 60) -> list[str]:
+def best_excerpts(
+    texts: list[str],
+    query: str,
+    max_words: int = 60,
+    embed_fn: Callable[[list[str]], np.ndarray] | None = None,
+) -> list[str]:
+    fn = embed_fn if embed_fn is not None else embed
     per_text = [split_sentences(t) for t in texts]
     flat = [s for sentences in per_text for s in sentences]
     if not flat:
         return [reflow(t) for t in texts]
-    scores = embed(flat) @ embed([query])[0]
+    scores = fn(flat) @ fn([query])[0]
     out: list[str] = []
     pos = 0
     for text, sentences in zip(texts, per_text):
@@ -359,12 +372,15 @@ def search_passages(
     query: str,
     passages: list[Passage],
     vectors: np.ndarray,
+    *,
     k: int = 5,
     per_book: int = 2,
     floor: float = 0.6,
     min_score: float = MIN_SCORE,
+    embed_fn: Callable[[list[str]], np.ndarray] | None = None,
 ) -> list[tuple[int, float]]:
-    pool = retrieve(query, vectors, k=min(len(passages), 200))
+    k_val = min(len(passages), 200)
+    pool = retrieve(query, vectors, k=k_val, embed_fn=embed)
     if not pool or pool[0][1] < min_score:
         return []  # best match too weak — off-domain question
     if floor > 0:
@@ -383,13 +399,19 @@ def ask(
     k: int = 5,
     per_book: int = 2,
     floor: float = 0.6,
+    passages: list[Passage] | None = None,
+    vectors: np.ndarray | None = None,
+    embed: Callable[[list[str]], np.ndarray] | None = None,
 ) -> None:
-    passages, vectors = load_library(book_ids)
+    if passages is None or vectors is None:
+        passages, vectors = load_library(book_ids)
     if not passages:
         print("No indexed books found. Run: uv run main.py index")
         return
 
-    results = search_passages(query, passages, vectors, k, per_book, floor)
+    results = search_passages(
+        query, passages, vectors, k=k, per_book=per_book, floor=floor, embed_fn=embed
+    )
     if not results:
         print(f'\nNothing strong enough for "{query}".')
         return
@@ -407,6 +429,7 @@ def ask(
             overflow="ellipsis",
         )
         console.print()
+        return
 
     choice = input("pick a number to deep read (enter to skip) > ").strip()
     if choice.isdigit() and 1 <= int(choice) <= len(results):
