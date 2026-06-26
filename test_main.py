@@ -10,6 +10,7 @@ from main import (
     read_library,
     reflow,
     retrieve,
+    search_passages,
 )
 
 
@@ -25,6 +26,20 @@ def test_diversify_no_cap_when_per_book_zero():
     ranked = [(0, 0.9), (1, 0.8), (2, 0.7)]
     out = diversify(ranked, lambda _: "A", k=3, per_book=0)
     assert [i for i, _ in out] == [0, 1, 2]
+
+
+def test_search_passages_caps_by_author_across_titles(monkeypatch):
+    # one author spread over several titles must still respect the per-book cap
+    passages = [
+        Passage("World as Will (Vol. 1)", "Schopenhauer, Arthur", "", "a"),
+        Passage("World as Will (Vol. 2)", "Schopenhauer, Arthur", "", "b"),
+        Passage("Essays of Schopenhauer", "Schopenhauer, Arthur", "", "c"),
+        Passage("War and Peace", "Tolstoy, Leo", "", "d"),
+    ]
+    pool = [(0, 0.9), (1, 0.85), (2, 0.8), (3, 0.75)]
+    monkeypatch.setattr("main.retrieve", lambda q, v, k: pool)
+    out = search_passages("q", passages, np.empty((4, 1)), k=5, per_book=2, floor=0)
+    assert [i for i, _ in out] == [0, 1, 3]  # Schopenhauer capped at 2, then Tolstoy
 
 
 def test_read_library_parses_ids_and_ignores_comments(tmp_path):

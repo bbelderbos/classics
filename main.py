@@ -315,7 +315,9 @@ def search_passages(
             floor * pool[0][1]
         )  # relative to the best match, so it scales per query
         pool = [(i, s) for i, s in pool if s >= cutoff]
-    return diversify(pool, lambda i: passages[i].title, k, per_book)
+    return diversify(
+        pool, lambda i: passages[i].author or passages[i].title, k, per_book
+    )
 
 
 def ask(
