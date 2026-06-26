@@ -42,6 +42,12 @@ def test_search_passages_caps_by_author_across_titles(monkeypatch):
     assert [i for i, _ in out] == [0, 1, 3]  # Schopenhauer capped at 2, then Tolstoy
 
 
+def test_search_passages_returns_empty_when_best_match_below_min_score(monkeypatch):
+    passages = [Passage("Walden", "Thoreau", "", "a")]
+    monkeypatch.setattr("main.retrieve", lambda q, v, k: [(0, 0.28)])
+    assert search_passages("buy bitcoin", passages, np.empty((1, 1))) == []
+
+
 def test_read_library_parses_ids_and_ignores_comments(tmp_path):
     f = tmp_path / "lib.txt"
     f.write_text("# header\n2600  # War and Peace\n\n28054\n")

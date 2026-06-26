@@ -77,8 +77,10 @@ underneath, and the score roughly doubles:
 | advice for developers | how do I find meaning and pride in my work? |
 | productivity and time management | is being busy the same as living well? |
 
-Scores are relative: a top match around `0.45+` is strong, while everything clustering at `0.2x`
-usually means the question is off-domain — try rephrasing toward a timeless theme.
+Scores are relative: a top match around `0.45+` is strong. If even the best match falls below
+`MIN_SCORE` (0.35) the question is treated as off-domain and nothing is shown — rather than five
+weak matches dressed up as answers. Nonsense and modern-jargon queries top out around 0.28, so the
+floor catches them while leaving real questions (which clear 0.40) untouched.
 
 ### Growing the library
 

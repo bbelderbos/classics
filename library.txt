@@ -1,5 +1,6 @@
 # (the indexer skips anything already built and reports any id it can't fetch)
 # Add a line to extend the library, then run:  uv run main.py index
+# To remove a book, delete its line here and its books/<id>.* files
 # Curated canon — Project Gutenberg book IDs, one per line.
 
 10      # The King James Version of the Bible
@@ -43,7 +44,6 @@
 40868   # The World as Will and Idea (3 of 3)
 996     # Don Quixote
 1399    # Anna Karenina
-4300    # Ulysses
 11000   # An Old Babylonian Version of the Gilgamesh Epic
 8800    # The divine comedy
 1727    # The Odyssey: Rendered into English prose

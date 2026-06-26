@@ -27,6 +27,8 @@ BOOK_URL = "https://gutendex.com/books/"
 BOOKS_DIR = Path("books")
 LIBRARY_FILE = Path("library.txt")
 EMBED_MODEL = "all-mpnet-base-v2"
+# below this the best match is noise — nonsense queries top out around 0.28
+MIN_SCORE = 0.35
 
 
 class Book(NamedTuple):
@@ -308,9 +310,12 @@ def search_passages(
     k: int = 5,
     per_book: int = 2,
     floor: float = 0.6,
+    min_score: float = MIN_SCORE,
 ) -> list[tuple[int, float]]:
     pool = retrieve(query, vectors, k=min(len(passages), 200))
-    if floor > 0 and pool:
+    if not pool or pool[0][1] < min_score:
+        return []  # best match too weak — off-domain question
+    if floor > 0:
         cutoff = (
             floor * pool[0][1]
         )  # relative to the best match, so it scales per query
