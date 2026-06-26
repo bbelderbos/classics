@@ -59,3 +59,6 @@
 768     # Wuthering Heights
 2413    # Madame Bovary
 47935   # Fathers and Sons
+11224   # Utilitarianism
+14591   # Faust [part 1]. Translated Into English in the Original Metres
+9371    # The Praise of Folly
