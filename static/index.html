@@ -133,7 +133,14 @@
       }
       .full p:first-letter { /* gentle lead-in, not a full drop cap */ }
       .full .read-hint { color: var(--muted); font-style: italic; font-size: 0.82rem; margin-bottom: 1rem; }
-      .full mark { background: var(--pill); color: inherit; padding: 0.05em 0.12em; border-radius: 3px; }
+      .full mark {
+        background: none;
+        color: inherit;
+        text-decoration: underline;
+        text-decoration-color: color-mix(in srgb, var(--accent) 50%, transparent);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+      }
       ::selection { background: var(--select); }
 
       .float-share {

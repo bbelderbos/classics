@@ -255,6 +255,31 @@ def add_to_library(book_ids: list[int], path: Path = LIBRARY_FILE) -> None:
             f.writelines(f"{b}\n" for b in new)
 
 
+def remove_from_library(book_ids: list[int], path: Path = LIBRARY_FILE) -> None:
+    if not path.exists():
+        return
+    drop = set(book_ids)
+    kept = [
+        line
+        for line in path.read_text().splitlines()
+        if not (token := line.split("#", 1)[0].strip()) or int(token) not in drop
+    ]
+    path.write_text("\n".join(kept) + "\n")
+
+
+def remove_books(book_ids: list[int]) -> None:
+    if not book_ids:
+        print("Nothing to remove. Pass ids: main.py index --remove 4300")
+        return
+    remove_from_library(book_ids)
+    for book_id in book_ids:
+        files = list(BOOKS_DIR.glob(f"{book_id}.*"))
+        for path in files:
+            path.unlink()
+        print(f"  - {book_id} removed ({len(files)} files)")
+    print("done.")
+
+
 def index_books(book_ids: list[int]) -> None:
     if not book_ids:
         print(
@@ -414,6 +439,11 @@ def main(argv: list[str] | None = None) -> None:
         type=int,
         help="ids to add; omit to index all of library.txt",
     )
+    p_index.add_argument(
+        "--remove",
+        action="store_true",
+        help="remove the given ids from library.txt and delete their books/ files",
+    )
 
     p_ask = sub.add_parser(
         "ask", help="find passages across the library for a question"
@@ -438,9 +468,12 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "fetch":
         print(f"Saved to {save_book(args.book_id)}")
     elif args.command == "index":
-        if args.book_ids:
-            add_to_library(args.book_ids)
-        index_books(args.book_ids or read_library())
+        if args.remove:
+            remove_books(args.book_ids)
+        else:
+            if args.book_ids:
+                add_to_library(args.book_ids)
+            index_books(args.book_ids or read_library())
     elif args.command == "ask":
         ask(
             args.query,

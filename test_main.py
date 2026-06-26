@@ -9,6 +9,7 @@ from main import (
     preview,
     read_library,
     reflow,
+    remove_from_library,
     retrieve,
     search_passages,
 )
@@ -52,6 +53,14 @@ def test_read_library_parses_ids_and_ignores_comments(tmp_path):
     f = tmp_path / "lib.txt"
     f.write_text("# header\n2600  # War and Peace\n\n28054\n")
     assert read_library(f) == [2600, 28054]
+
+
+def test_remove_from_library_drops_ids_and_keeps_comments(tmp_path):
+    f = tmp_path / "lib.txt"
+    f.write_text("# header\n2600  # War and Peace\n4300  # Ulysses\n28054\n")
+    remove_from_library([4300], f)
+    assert read_library(f) == [2600, 28054]
+    assert "# header" in f.read_text()
 
 
 def test_passage_cite_combines_author_title_and_label():

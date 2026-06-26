@@ -1,6 +1,6 @@
 # (the indexer skips anything already built and reports any id it can't fetch)
 # Add a line to extend the library, then run:  uv run main.py index
-# To remove a book, delete its line here and its books/<id>.* files
+# Remove a book with:  uv run main.py index <id> --remove  (drops it here + its books/ files)
 # Curated canon — Project Gutenberg book IDs, one per line.
 
 10      # The King James Version of the Bible
