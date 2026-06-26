@@ -1,3 +1,4 @@
+import json
 import logging
 from functools import cache
 from pathlib import Path
@@ -51,7 +52,16 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
     if not passages:
         return []
     ranked = search_passages(q, passages, vectors, k, per_book, floor)
-    record(SearchEvent(query=q, results=len(ranked)))
+    shown = [
+        {
+            "id": passages[i].book_id,
+            "label": passages[i].label,
+            "offset": passages[i].offset,
+            "score": round(score, 3),
+        }
+        for i, score in ranked
+    ]
+    record(SearchEvent(query=q, results=json.dumps(shown)))
     return [
         Match(
             rank=rank,

@@ -213,6 +213,8 @@ class Passage(NamedTuple):
     author: str
     label: str
     text: str
+    book_id: int = 0
+    offset: int = 0  # chunk index within the book
 
     def cite(self) -> str:
         where = " · ".join(part for part in (self.author, self.title) if part)
@@ -293,8 +295,8 @@ def load_library(book_ids: list[int] | None = None) -> tuple[list[Passage], np.n
         meta_path = BOOKS_DIR / f"{book_id}.meta.json"
         meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
         title, author = meta.get("title", str(book_id)), meta.get("author", "")
-        for c in json.loads(chunks_path.read_text()):
-            passages.append(Passage(title, author, c["label"], c["text"]))
+        for i, c in enumerate(json.loads(chunks_path.read_text())):
+            passages.append(Passage(title, author, c["label"], c["text"], book_id, i))
         matrices.append(np.load(vectors_path))
     return passages, np.vstack(matrices) if matrices else np.empty((0, 0))
 
