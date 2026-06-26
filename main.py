@@ -321,6 +321,10 @@ def index_books(book_ids: list[int]) -> None:
                 save_book(book_id)
             if not meta_path.exists():
                 title, author = book_metadata(book_id)
+                if not author:
+                    print(
+                        f"  ! {book_id} has no author on Gutenberg — set it in {meta_path.name}"
+                    )
                 BOOKS_DIR.mkdir(exist_ok=True)
                 meta_path.write_text(json.dumps({"title": title, "author": author}))
             title = json.loads(meta_path.read_text())["title"]
