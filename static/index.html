@@ -82,15 +82,20 @@
       #pitch { margin: 2.5rem 0 1rem; }
       #pitch[hidden] { display: none; }
       .pitch-lead { font-style: italic; color: var(--muted); margin: 0 0 1rem; text-align: center; }
-      #pitch ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.9rem; }
-      #pitch li {
+      .manifesto-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 0.9rem;
+        margin: 0;
+      }
+      .manifesto-card {
         background: var(--card);
         border: 1px solid var(--rule);
         border-radius: 10px;
-        padding: 0.9rem 1.1rem;
-        line-height: 1.6;
+        padding: 1rem 1.1rem;
       }
-      #pitch b { color: var(--accent); font-weight: 600; }
+      .manifesto-card h4 { margin: 0 0 0.4rem; font-size: 1.02rem; color: var(--accent); font-weight: 600; }
+      .manifesto-card p { margin: 0; line-height: 1.55; }
       .examples { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 2rem; }
       .chip {
         padding: 0.4rem 0.85rem;
@@ -216,12 +221,24 @@
           <button class="chip">How do I find courage when I'm afraid?</button>
         </div>
         <p class="pitch-lead">Why not just ask ChatGPT?</p>
-        <ul>
-          <li><b>It never writes a word.</b> Every answer is a real passage you can open to the exact chapter — nothing invented, nothing misattributed.</li>
-          <li><b>The weight is in the source.</b> Aurelius, Dostoevsky, Seneca — minds that lived it and outlived us, not one flattened helpful-assistant voice.</li>
-          <li><b>A discovery engine, not an answer machine.</b> Find something you didn't know existed, and a book to read next.</li>
-          <li><b>It confronts instead of coddles.</b> The canon was written to challenge you, not to please you.</li>
-        </ul>
+        <div class="manifesto-grid">
+          <div class="manifesto-card">
+            <h4>It never writes a word</h4>
+            <p>Every answer is a real passage you can open to the exact chapter — nothing invented, nothing misattributed.</p>
+          </div>
+          <div class="manifesto-card">
+            <h4>The weight is in the source</h4>
+            <p>Aurelius, Dostoevsky, Seneca — minds that lived it and outlived us, not one flattened helpful-assistant voice.</p>
+          </div>
+          <div class="manifesto-card">
+            <h4>A discovery engine, not an answer machine</h4>
+            <p>Find something you didn't know existed, and a book to read next.</p>
+          </div>
+          <div class="manifesto-card">
+            <h4>It confronts instead of coddles</h4>
+            <p>The canon was written to challenge you, not to please you.</p>
+          </div>
+        </div>
       </section>
 
       <div id="results"></div>
