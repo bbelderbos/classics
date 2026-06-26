@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 import json
 import logging
 import re
+import time
 from functools import cache
 from html import escape
 from pathlib import Path
@@ -27,6 +28,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+    )
     init_db()
     yield
 
@@ -61,7 +65,9 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
     passages, vectors = library()
     if not passages:
         return []
+    t0 = time.perf_counter()
     ranked = search_passages(q, passages, vectors, k, per_book, floor)
+    t1 = time.perf_counter()
     shown = [
         {
             "id": passages[i].book_id,
@@ -73,6 +79,15 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
     ]
     record(SearchEvent(query=q, results=json.dumps(shown)))
     highlights = best_excerpts([passages[i].text for i, _ in ranked], q)
+    t2 = time.perf_counter()
+    logger.info(
+        "ask q=%r results=%d search=%.2fs highlight=%.2fs total=%.2fs",
+        q,
+        len(ranked),
+        t1 - t0,
+        t2 - t1,
+        t2 - t0,
+    )
     return [
         Match(
             rank=rank,

@@ -79,6 +79,27 @@
       .hint { color: var(--muted); font-size: 0.85rem; font-style: italic; margin: 0 0 2rem; }
       .status { color: var(--muted); text-align: center; padding: 2rem 0; }
       .found { color: var(--muted); font-style: italic; font-size: 0.85rem; margin: 0 0 1rem; }
+      .loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        color: var(--muted);
+        font-style: italic;
+        padding: 3rem 0;
+      }
+      .loader .spinner {
+        width: 2rem;
+        height: 2rem;
+        border: 2px solid var(--rule);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        .loader .spinner { animation-duration: 2s; }
+      }
       #pitch { margin: 2.5rem 0 1rem; }
       #pitch[hidden] { display: none; }
       .pitch-lead { font-style: italic; color: var(--muted); margin: 0 0 1rem; text-align: center; }
@@ -342,7 +363,7 @@
 
       async function search(q, expanded = false) {
         document.getElementById("pitch").hidden = true;
-        results.innerHTML = `<p class="status">Reading the canon…</p>`;
+        results.innerHTML = `<div class="loader"><div class="spinner"></div><span>Reading the canon…</span></div>`;
         const params = expanded ? "&k=15&per_book=4&floor=0.4" : "";
         try {
           const res = await fetch(`/api/ask?q=${encodeURIComponent(q)}${params}`);
