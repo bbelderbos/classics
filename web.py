@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from db import QuoteEvent, SearchEvent, init_db, record
 from main import (
     Passage,
-    best_excerpt,
+    best_excerpts,
     load_library,
     reflow,
     search_passages,
@@ -62,6 +62,7 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
         for i, score in ranked
     ]
     record(SearchEvent(query=q, results=json.dumps(shown)))
+    highlights = best_excerpts([passages[i].text for i, _ in ranked], q)
     return [
         Match(
             rank=rank,
@@ -71,7 +72,7 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
             title=passages[i].title,
             label=passages[i].label,
             text=reflow(passages[i].text),
-            highlight=best_excerpt(passages[i].text, q),
+            highlight=highlights[rank - 1],
         )
         for rank, (i, score) in enumerate(ranked, 1)
     ]

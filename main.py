@@ -183,11 +183,7 @@ def split_sentences(text: str) -> list[str]:
     return [s.strip() for s in SENTENCE_RE.split(flat) if s.strip()]
 
 
-def best_excerpt(text: str, query: str, max_words: int = 60) -> str:
-    sentences = split_sentences(text)
-    if len(sentences) <= 1:
-        return reflow(text)
-    scores = embed(sentences) @ embed([query])[0]
+def _grow_window(sentences: list[str], scores: np.ndarray, max_words: int) -> str:
     lo = hi = int(np.argmax(scores))
     words = len(sentences[lo].split())
     while hi - lo + 1 < 3:  # grow toward the better neighbour within the word budget
@@ -201,6 +197,33 @@ def best_excerpt(text: str, query: str, max_words: int = 60) -> str:
         lo, hi = min(lo, nxt), max(hi, nxt)
         words += len(sentences[nxt].split())
     return " ".join(sentences[lo : hi + 1])
+
+
+def best_excerpt(text: str, query: str, max_words: int = 60) -> str:
+    sentences = split_sentences(text)
+    if len(sentences) <= 1:
+        return reflow(text)
+    scores = embed(sentences) @ embed([query])[0]
+    return _grow_window(sentences, scores, max_words)
+
+
+def best_excerpts(texts: list[str], query: str, max_words: int = 60) -> list[str]:
+    per_text = [split_sentences(t) for t in texts]
+    flat = [s for sentences in per_text for s in sentences]
+    if not flat:
+        return [reflow(t) for t in texts]
+    scores = embed(flat) @ embed([query])[0]
+    out: list[str] = []
+    pos = 0
+    for text, sentences in zip(texts, per_text):
+        window = scores[pos : pos + len(sentences)]
+        pos += len(sentences)
+        out.append(
+            reflow(text)
+            if len(sentences) <= 1
+            else _grow_window(sentences, window, max_words)
+        )
+    return out
 
 
 def humanize_author(author: str) -> str:

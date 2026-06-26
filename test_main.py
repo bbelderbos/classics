@@ -3,6 +3,7 @@ import numpy as np
 from main import (
     Passage,
     best_excerpt,
+    best_excerpts,
     chunk_text,
     diversify,
     humanize_author,
@@ -165,3 +166,27 @@ def test_best_excerpt_picks_query_relevant_sentence(monkeypatch):
     )
     # the word budget keeps it to the single best-matching sentence
     assert best_excerpt(text, "cats", max_words=6) == "The cat sat on the mat."
+
+
+def test_best_excerpts_batched_matches_per_passage(monkeypatch):
+    texts = [
+        "Alpha beta gamma. The cat sat on the mat. Delta epsilon zeta.",
+        "A solitary line with no rivals here.",
+        "Fear grips the heart. Courage answers it. Peace follows after.",
+    ]
+    vocab = {
+        "Alpha beta gamma.": [1.0, 0.0],
+        "The cat sat on the mat.": [0.0, 1.0],
+        "Delta epsilon zeta.": [1.0, 0.0],
+        "A solitary line with no rivals here.": [0.5, 0.5],
+        "Fear grips the heart.": [0.3, 0.2],
+        "Courage answers it.": [0.0, 1.0],
+        "Peace follows after.": [0.2, 0.1],
+        "cats": [0.0, 1.0],
+    }
+    monkeypatch.setattr("main.embed", lambda texts: np.array([vocab[t] for t in texts]))
+
+    batched = best_excerpts(texts, "cats", max_words=6)
+    one_by_one = [best_excerpt(t, "cats", max_words=6) for t in texts]
+    assert batched == one_by_one
+    assert batched[1] == "A solitary line with no rivals here."  # single-sentence path
