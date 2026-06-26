@@ -62,3 +62,13 @@
 11224   # Utilitarianism
 14591   # Faust [part 1]. Translated Into English in the Original Metres
 9371    # The Praise of Folly
+21959   # Letters from a Self-Made Merchant to His Son
+3361    # Letters to His Son, Complete: On the Fine Art of Becoming a Man of the World and a Gentleman
+2527    # The Sorrows of Young Werther
+148     # The Autobiography of Benjamin Franklin
+59844   # The Science of Getting Rich (Wattles)
+14033   # Plutarch's Lives, Volume 1 (of 4)
+14114   # Plutarch's Lives, Volume 2 (of 4)
+14140   # Plutarch's Lives, Volume 3 (of 4)
+44315   # Plutarch's Lives, Volume 4 (of 4)
+368     # Conwell — Acres of Diamonds
