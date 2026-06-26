@@ -1,17 +1,21 @@
 import json
 import logging
+import re
 from functools import cache
+from html import escape
 from pathlib import Path
 
 import numpy as np
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+from mdweaver import weave_pdf
 from pydantic import BaseModel
 
 from db import QuoteEvent, SearchEvent, init_db, record
 from main import (
     Passage,
     best_excerpts,
+    humanize_author,
     load_library,
     reflow,
     search_passages,
@@ -96,3 +100,121 @@ def quote(body: QuoteIn) -> dict[str, bool]:
         )
     )
     return {"ok": True}
+
+
+# mirrors static/index.html's light palette so the PDF matches the share images
+PDF_CSS = """
+@page {
+    size: A4;
+    margin: 2.4cm 2cm 2cm;
+    @top-left { content: "CLASSICS"; font-family: Georgia, serif; font-size: 8pt; letter-spacing: 3px; color: #b9ad97; }
+    @top-right { content: "belderbos.dev/classics"; font-family: Georgia, serif; font-size: 8pt; color: #b9ad97; }
+    @bottom-center { content: counter(page); font-family: Georgia, serif; font-size: 9pt; color: #b9ad97; }
+}
+html { background: #fffdf8; }
+body {
+    font-family: Georgia, "Gelasio", "Times New Roman", serif;
+    color: #2b2622;
+    font-size: 11.5pt;
+    line-height: 1.75;
+}
+.doc-head { text-align: center; margin: 0 0 2.6rem; }
+.doc-head .eyebrow {
+    font-style: italic; color: #8a7f6f; font-size: 9.5pt;
+    letter-spacing: 1px; text-transform: uppercase; margin: 0 0 0.5rem;
+}
+.doc-head h1 { font-size: 22pt; font-weight: normal; margin: 0; line-height: 1.25; }
+.passage { margin: 0 0 2.4rem; }
+.passage + .passage { border-top: 1px solid #e2d9c8; padding-top: 2.4rem; }
+.passage .where { font-size: 13pt; font-weight: bold; color: #8a5a2b; margin: 0 0 0.15rem; break-after: avoid; }
+.passage .label {
+    font-size: 8.5pt; letter-spacing: 1px; text-transform: uppercase;
+    color: #8a7f6f; margin: 0 0 1.1rem; break-after: avoid;
+}
+.passage p.text { margin: 0 0 1rem; text-align: justify; hyphens: auto; }
+u { text-decoration-color: rgba(138, 90, 43, 0.5); text-underline-offset: 2px; }
+"""
+
+_WORD = re.compile(r"\S+")
+
+
+def _norm(word: str) -> str:
+    return re.sub(r"[\W_]+", "", word.lower())
+
+
+# underline the best-matching span within a paragraph (port of the front-end markMatch)
+def _underline(paragraph: str, excerpt: str) -> str:
+    if not excerpt:
+        return escape(paragraph)
+    tokens = [
+        (m.start(), m.end(), _norm(m.group()))
+        for m in _WORD.finditer(paragraph)
+        if _norm(m.group())
+    ]
+    hay = " " + " ".join(filter(None, (_norm(w) for w in excerpt.split()))) + " "
+    best: tuple[int, int] | None = None
+    for a in range(len(tokens)):
+        run = ""
+        for b in range(a, len(tokens)):
+            nxt = f"{run} {tokens[b][2]}" if run else tokens[b][2]
+            if f" {nxt} " not in hay:
+                break
+            run = nxt
+            if best is None or b - a > best[1] - best[0]:
+                best = (a, b)
+    if best is None or best[1] - best[0] < 3:
+        return escape(paragraph)
+    start, end = tokens[best[0]][0], tokens[best[1]][1]
+    return (
+        escape(paragraph[:start])
+        + f"<u>{escape(paragraph[start:end])}</u>"
+        + escape(paragraph[end:])
+    )
+
+
+class PdfItem(BaseModel):
+    author: str = ""
+    title: str = ""
+    label: str = ""
+    text: str
+    highlight: str = ""
+
+
+class PdfIn(BaseModel):
+    query: str = ""
+    items: list[PdfItem]
+
+
+def _pdf_document(query: str, items: list[PdfItem]) -> str:
+    parts = ['<div class="doc-head">']
+    if query:
+        parts.append('<p class="eyebrow">You asked</p>')
+        parts.append(f"<h1>{escape(query)}</h1>")
+    parts.append("</div>")
+    for item in items:
+        where = " · ".join(p for p in (humanize_author(item.author), item.title) if p)
+        parts.append('<div class="passage">')
+        parts.append(f'<p class="where">{escape(where)}</p>')
+        if item.label:
+            parts.append(f'<p class="label">{escape(item.label)}</p>')
+        for para in (p.strip() for p in item.text.split("\n\n")):
+            if para:
+                parts.append(f'<p class="text">{_underline(para, item.highlight)}</p>')
+        parts.append("</div>")
+    return "\n".join(parts)
+
+
+def _slug(query: str) -> str:
+    base = re.sub(r"[^\w]+", "-", query.lower()).strip("-")
+    return f"classics-{base}.pdf" if base else "classics.pdf"
+
+
+@app.post("/api/pdf")
+def pdf(body: PdfIn) -> Response:
+    document = _pdf_document(body.query, body.items)
+    data = weave_pdf(document, PDF_CSS)
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{_slug(body.query)}"'},
+    )

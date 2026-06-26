@@ -126,11 +126,10 @@
       }
       .card:hover { border-color: var(--accent); box-shadow: 0 2px 14px rgba(0, 0, 0, 0.05); }
       .head { cursor: pointer; }
-      .cite { display: flex; align-items: baseline; gap: 0.6rem; justify-content: space-between; }
+      .cite { display: flex; align-items: center; gap: 0.6rem; justify-content: space-between; }
       .where { font-weight: 600; }
+      .actions { flex: none; display: flex; align-items: center; gap: 0.6rem; }
       .copy-btn {
-        flex: none;
-        align-self: flex-start;
         padding: 0.25rem 0.7rem;
         font-size: 0.78rem;
         background: var(--card);
@@ -140,6 +139,34 @@
         cursor: pointer;
       }
       .copy-btn:hover { border-color: var(--accent); }
+      .pick-label {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.78rem;
+        color: var(--muted);
+        cursor: pointer;
+        user-select: none;
+      }
+      .pick-label input { accent-color: var(--accent); cursor: pointer; }
+      .export-bar {
+        position: fixed;
+        left: 50%;
+        bottom: 1.25rem;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+        padding: 0.5rem 0.6rem 0.5rem 1.1rem;
+        background: var(--card);
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+        z-index: 45;
+      }
+      .export-bar[hidden] { display: none; }
+      .export-bar span { color: var(--muted); font-size: 0.85rem; }
+      .export-bar button { padding: 0.5rem 1rem; font-size: 0.9rem; }
       .preview { color: var(--muted); margin: 0.5rem 0 0; font-style: italic; }
       .full { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
       .full[hidden] { display: none; }
@@ -261,6 +288,11 @@
 
     <button id="floatShare" class="float-share" hidden>Share as image</button>
 
+    <div id="exportBar" class="export-bar" hidden>
+      <span id="exportCount"></span>
+      <button id="exportBtn" type="button">Download PDF</button>
+    </div>
+
     <div id="overlay" class="overlay" hidden>
       <img id="overlayImg" alt="shareable quote" />
       <div class="row">
@@ -282,9 +314,13 @@
       const floatShare = document.getElementById("floatShare");
       const overlay = document.getElementById("overlay");
       const overlayImg = document.getElementById("overlayImg");
+      const exportBar = document.getElementById("exportBar");
+      const exportBtn = document.getElementById("exportBtn");
+      const exportCount = document.getElementById("exportCount");
 
       let selection = null; // { text, author, title, query }
       let activeQuery = "";
+      const selected = new Set(); // match objects picked for the PDF
 
       const themeToggle = document.getElementById("themeToggle");
       const paintToggle = () =>
@@ -332,6 +368,8 @@
         const n = matches.length;
         results.innerHTML = `<p class="found">${n} echo${n > 1 ? "es" : ""} from across the canon</p>`;
         activeQuery = q;
+        selected.clear();
+        updateExportBar();
         for (const m of matches) {
           const card = document.createElement("div");
           card.className = "card";
@@ -342,7 +380,10 @@
             <div class="head">
               <div class="cite">
                 <span class="where">${escapeHtml(m.cite)}</span>
-                <button class="copy-btn" type="button">Copy</button>
+                <span class="actions">
+                  <button class="copy-btn" type="button">Copy</button>
+                  <label class="pick-label"><input type="checkbox" class="pick" /> PDF</label>
+                </span>
               </div>
               <p class="preview">${escapeHtml(preview(m.text))}</p>
             </div>
@@ -356,10 +397,13 @@
           card.querySelector(".head").addEventListener("click", () => {
             full.hidden = !full.hidden;
           });
+          card.querySelector(".actions").addEventListener("click", (e) => e.stopPropagation());
           const copyBtn = card.querySelector(".copy-btn");
-          copyBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            copyFragment(m, copyBtn);
+          copyBtn.addEventListener("click", () => copyFragment(m, copyBtn));
+          card.querySelector(".pick").addEventListener("change", (e) => {
+            if (e.target.checked) selected.add(m);
+            else selected.delete(m);
+            updateExportBar();
           });
           results.appendChild(card);
         }
@@ -620,6 +664,53 @@
           btn.disabled = false;
         }, 1200);
       }
+
+      function updateExportBar() {
+        const n = selected.size;
+        exportBar.hidden = n === 0;
+        exportCount.textContent = `${n} selected`;
+      }
+
+      function slugify(q) {
+        const base = q.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
+        return base ? `classics-${base}.pdf` : "classics.pdf";
+      }
+
+      exportBtn.addEventListener("click", async () => {
+        if (!selected.size) return;
+        const items = [...selected].map((m) => ({
+          author: m.author,
+          title: m.title,
+          label: m.label,
+          text: m.text,
+          highlight: m.highlight,
+        }));
+        const original = exportBtn.textContent;
+        exportBtn.disabled = true;
+        exportBtn.textContent = "Building…";
+        try {
+          const res = await fetch("/api/pdf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: activeQuery, items }),
+          });
+          if (!res.ok) throw new Error();
+          const url = URL.createObjectURL(await res.blob());
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = slugify(activeQuery);
+          a.click();
+          URL.revokeObjectURL(url);
+          exportBtn.textContent = original;
+          exportBtn.disabled = false;
+        } catch {
+          exportBtn.textContent = "Failed — retry";
+          setTimeout(() => {
+            exportBtn.textContent = original;
+            exportBtn.disabled = false;
+          }, 1500);
+        }
+      });
 
       function humanize(a) {
         if ((a.match(/,/g) || []).length === 1) {
