@@ -18,6 +18,8 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "prek>=0.4.5",
+    "pyrefly>=1.1.1",
     "pytest>=9.1.1",
     "ty>=0.0.53",
 ]
