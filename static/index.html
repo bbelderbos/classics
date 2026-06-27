@@ -105,6 +105,14 @@
       .pitch-lead { font-style: italic; color: var(--muted); margin: 0 0 1rem; text-align: center; }
       .pitch-now { text-align: center; line-height: 1.6; margin: 0 0 1.5rem; max-width: 34rem; margin-left: auto; margin-right: auto; }
       .pitch-now strong { color: var(--accent); font-weight: 600; }
+      .demo { max-width: 52rem; margin: 0 auto 2rem; }
+      .demo-pair { display: flex; gap: 1rem; align-items: stretch; }
+      .demo-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+      .demo-q { text-align: center; margin: 0 0 0.75rem; font-style: italic; }
+      .demo-q span { display: block; font-style: normal; color: var(--muted); font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.25rem; }
+      .demo-card { cursor: default; flex: 1; margin-bottom: 0; }
+      .demo-card:hover { border-color: var(--rule); box-shadow: none; }
+      @media (max-width: 640px) { .demo-pair { flex-direction: column; } }
       .manifesto-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -285,6 +293,28 @@
           <button class="chip">What makes a leader worth following?</button>
         </div>
         <p class="pitch-now">People want the classics. Nobody has four quiet hours anymore, and the page count is its own wall. <strong>So take one page</strong> — written by someone who wrestled with the same question you have.</p>
+        <div class="demo">
+          <div class="demo-pair">
+            <div class="demo-col">
+              <p class="demo-q"><span>You ask</span>“Is it better to be feared or loved?”</p>
+              <div class="card demo-card">
+                <div class="cite">
+                  <span class="where">Machiavelli, Niccolò · The Prince — CHAPTER XVI. CONCERNING LIBERALITY AND MEANNESS<span class="meter" title="Resonates" aria-label="Resonates"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></span>
+                </div>
+                <p class="preview">Upon this a question arises: whether it be better to be loved than feared or feared than loved? It may be answered that one should wish to be both, bu…</p>
+              </div>
+            </div>
+            <div class="demo-col">
+              <p class="demo-q"><span>You ask</span>“Should I trust my own ambition?”</p>
+              <div class="card demo-card">
+                <div class="cite">
+                  <span class="where">Wattles, W. D. (Wallace Delois) · The Science of Getting Rich — CHAPTER XIII. GETTING INTO THE RIGHT BUSINESS.<span class="meter" title="Resonates" aria-label="Resonates"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></span>
+                </div>
+                <p class="preview">Doing what you want to do is life; and there is no real satisfaction in living if we are compelled to be forever doing something which we do not like …</p>
+              </div>
+            </div>
+          </div>
+        </div>
         <p class="pitch-lead">Why not just ask ChatGPT?</p>
         <div class="manifesto-grid">
           <div class="manifesto-card">
@@ -296,8 +326,8 @@
             <p>Aurelius, Dostoevsky, Seneca — minds that lived it and outlived us, not one flattened helpful-assistant voice.</p>
           </div>
           <div class="manifesto-card">
-            <h4>It confronts instead of coddles</h4>
-            <p>The canon was written to challenge you, not to please you.</p>
+            <h4>It rewards deep reading</h4>
+            <p>Where a chatbot floods you with pages to skim, you sit with one passage that has stood for centuries — short enough to read slowly, and actually keep.</p>
           </div>
         </div>
       </section>
