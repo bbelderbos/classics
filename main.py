@@ -271,44 +271,11 @@ def read_library(path: Path = LIBRARY_FILE) -> list[int]:
     return ids
 
 
-def add_to_library(book_ids: list[int], path: Path = LIBRARY_FILE) -> None:
-    new = [b for b in book_ids if b not in set(read_library(path))]
-    if new:
-        with path.open("a") as f:
-            f.writelines(f"{b}\n" for b in new)
-
-
-def remove_from_library(book_ids: list[int], path: Path = LIBRARY_FILE) -> None:
-    if not path.exists():
-        return
-    drop = set(book_ids)
-    kept = [
-        line
-        for line in path.read_text().splitlines()
-        if not (token := line.split("#", 1)[0].strip()) or int(token) not in drop
-    ]
-    path.write_text("\n".join(kept) + "\n")
-
-
-def remove_books(book_ids: list[int]) -> None:
-    if not book_ids:
-        print("Nothing to remove. Pass ids: main.py index --remove 4300")
-        return
-    remove_from_library(book_ids)
-    for book_id in book_ids:
-        files = list(BOOKS_DIR.glob(f"{book_id}.*"))
-        for path in files:
-            path.unlink()
-        print(f"  - {book_id} removed ({len(files)} files)")
-    print("done.")
+def indexed_books() -> set[int]:
+    return {int(path.stem) for path in BOOKS_DIR.glob("*.npy")}
 
 
 def index_books(book_ids: list[int]) -> None:
-    if not book_ids:
-        print(
-            "Nothing to index. Add ids to library.txt or pass them: main.py index 1342"
-        )
-        return
     for book_id in book_ids:
         meta_path = BOOKS_DIR / f"{book_id}.meta.json"
         built = (BOOKS_DIR / f"{book_id}.npy").exists()
@@ -336,6 +303,19 @@ def index_books(book_ids: list[int]) -> None:
         except Exception as e:
             print(f"  x {book_id}: {e}")
     print("done.")
+
+
+def sync_library() -> None:
+    desired = read_library()
+    if not desired:
+        print("library.txt has no ids — refusing to delete books/. Add ids, then sync.")
+        return
+    for book_id in sorted(indexed_books() - set(desired)):
+        files = list(BOOKS_DIR.glob(f"{book_id}.*"))
+        for path in files:
+            path.unlink()
+        print(f"  - {book_id} removed ({len(files)} files)")
+    index_books(desired)
 
 
 def load_library(book_ids: list[int] | None = None) -> tuple[list[Passage], np.ndarray]:
@@ -386,7 +366,7 @@ def ask(
 ) -> None:
     passages, vectors = load_library(book_ids)
     if not passages:
-        print("No indexed books found. Run: uv run main.py index")
+        print("No indexed books found. Run: uv run main.py sync")
         return
 
     results = search_passages(query, passages, vectors, k, per_book, floor)
@@ -459,18 +439,7 @@ def main(argv: list[str] | None = None) -> None:
     p_fetch = sub.add_parser("fetch", help="download one book to books/")
     p_fetch.add_argument("book_id", type=int)
 
-    p_index = sub.add_parser("index", help="chunk + embed books into the library")
-    p_index.add_argument(
-        "book_ids",
-        nargs="*",
-        type=int,
-        help="ids to add; omit to index all of library.txt",
-    )
-    p_index.add_argument(
-        "--remove",
-        action="store_true",
-        help="remove the given ids from library.txt and delete their books/ files",
-    )
+    sub.add_parser("sync", help="reconcile books/ embeddings with library.txt")
 
     p_ask = sub.add_parser(
         "ask", help="find passages across the library for a question"
@@ -494,13 +463,8 @@ def main(argv: list[str] | None = None) -> None:
         run_search(" ".join(args.terms))
     elif args.command == "fetch":
         print(f"Saved to {save_book(args.book_id)}")
-    elif args.command == "index":
-        if args.remove:
-            remove_books(args.book_ids)
-        else:
-            if args.book_ids:
-                add_to_library(args.book_ids)
-            index_books(args.book_ids or read_library())
+    elif args.command == "sync":
+        sync_library()
     elif args.command == "ask":
         ask(
             args.query,

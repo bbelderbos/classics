@@ -24,10 +24,10 @@ search *query: sync
 fetch id: sync
     uv run main.py fetch {{ id }}
 
-# Index books (e.g., 'just index' for all, or 'just index 1342 2680')
+# Reconcile books/ embeddings with library.txt (edit the file, then 'just reindex')
 [group('library')]
-index *ids: sync
-    uv run main.py index {{ ids }}
+reindex: sync
+    uv run main.py sync
 
 # Ask a question across the library (e.g., just ask "the meaning of suffering" "-k 8")
 [group('search')]

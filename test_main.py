@@ -1,5 +1,7 @@
 import numpy as np
+import pytest
 
+import main
 from main import (
     Passage,
     best_excerpt,
@@ -10,7 +12,6 @@ from main import (
     preview,
     read_library,
     reflow,
-    remove_from_library,
     retrieve,
     search_passages,
 )
@@ -56,12 +57,35 @@ def test_read_library_parses_ids_and_ignores_comments(tmp_path):
     assert read_library(f) == [2600, 28054]
 
 
-def test_remove_from_library_drops_ids_and_keeps_comments(tmp_path):
-    f = tmp_path / "lib.txt"
-    f.write_text("# header\n2600  # War and Peace\n4300  # Ulysses\n28054\n")
-    remove_from_library([4300], f)
-    assert read_library(f) == [2600, 28054]
-    assert "# header" in f.read_text()
+def test_sync_deletes_stale_and_builds_desired(monkeypatch, tmp_path):
+    books = tmp_path / "books"
+    books.mkdir()
+    for book_id in (1, 2):  # both present on disk, with their full fileset
+        for ext in ("txt", "npy", "chunks.json", "meta.json"):
+            (books / f"{book_id}.{ext}").write_text("x")
+    monkeypatch.setattr(main, "BOOKS_DIR", books)
+    monkeypatch.setattr(main, "read_library", lambda: [1, 3])  # 2 dropped, 3 added
+    built: list[int] = []
+    monkeypatch.setattr(main, "index_books", built.extend)
+
+    main.sync_library()
+
+    assert not list(books.glob("2.*"))  # every stale file deleted, not just the .npy
+    assert len(list(books.glob("1.*"))) == 4  # desired book's fileset untouched
+    assert built == [1, 3]  # full desired list handed to the indexer
+
+
+def test_sync_refuses_to_wipe_books_when_library_empty(monkeypatch, tmp_path):
+    books = tmp_path / "books"
+    books.mkdir()
+    (books / "1.npy").write_text("x")
+    monkeypatch.setattr(main, "BOOKS_DIR", books)
+    monkeypatch.setattr(main, "read_library", lambda: [])
+    monkeypatch.setattr(main, "index_books", lambda ids: pytest.fail("must not index"))
+
+    main.sync_library()
+
+    assert (books / "1.npy").exists()  # nothing deleted
 
 
 def test_passage_cite_combines_author_title_and_label():

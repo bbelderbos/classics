@@ -51,9 +51,8 @@ uv run main.py search tolstoy war and peace
 # download one book's text to books/
 uv run main.py fetch 2600
 
-# index books into the library (chunk + embed + cache)
-uv run main.py index                 # index everything in library.txt (skips already-built)
-uv run main.py index 1342 2680       # add these ids to library.txt and index them
+# reconcile books/ with library.txt: build new ids, drop removed ones
+uv run main.py sync
 
 # ask a question across the whole library
 uv run main.py ask "how do I face death without fear"
@@ -84,7 +83,7 @@ its citation. From there you can:
 Searches and saved quotes are recorded to `classics.db` (SQLite).
 
 The repo ships a `Justfile` wrapping the common commands — run `just` to list them (`just server`,
-`just ask "..."`, `just index`, `just fetch <id>`, `just search ...`).
+`just ask "..."`, `just reindex`, `just fetch <id>`, `just search ...`).
 
 ### Phrasing your question
 
@@ -122,9 +121,10 @@ floor catches them while leaving real questions (which clear 0.40) untouched.
 
 ### Growing the library
 
-Add a Gutenberg id (use `search` to find it) to `library.txt`, then run `uv run main.py index`.
-The indexer skips anything already built, backfills missing metadata without re-embedding, and
-reports any id it can't fetch — so re-running is always safe.
+`library.txt` is the source of truth. Add a Gutenberg id (use `search` to find it) or delete a
+line, then run `uv run main.py sync`: it builds embeddings for new ids, deletes the `books/` files
+for removed ones, skips anything already built, and reports any id it can't fetch — so re-running
+is always safe. (It refuses to run if `library.txt` is empty, rather than wiping `books/`.)
 
 ## Development
 

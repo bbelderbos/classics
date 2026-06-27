@@ -1,5 +1,5 @@
 # Curated canon — Project Gutenberg book IDs, one per line.
-# After modifying this file run `uv run main.py index` to sync the embeddings in books/
+# After adding or removing a line, run `uv run main.py sync` to reconcile books/
 10      # The King James Version of the Bible
 74      # Twain — The Adventures of Tom Sawyer
 84      # Shelley — Frankenstein

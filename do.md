@@ -47,13 +47,30 @@ apt install -y caddy sqlite3 python3-pip libpango-1.0-0 libpangoft2-1.0-0 libhar
 
 3. The model and embeddings
 
-Copy over the books and the huggingface cache (if you have it) to the droplet
+Copy the huggingface cache (the embedding model) to the droplet so `sync` can embed offline:
 
 ```bash
 scp -i ~/.ssh/id_do -r ~/.cache/huggingface root@ip:/root/.cache/
-# in local books folder
-scp -i ~/.ssh/id_do * root@ip:/root/classics/books/
 ```
+
+The `books/` embeddings are no longer copied by hand. `library.txt` is the source of truth, so
+the droplet builds them itself with `sync`: it fetches the text for any new ids from Gutenberg,
+embeds them with the cached model, and deletes the files for ids you removed from `library.txt`.
+
+`sync` loads the model to embed, so on a small droplet stop the service first to avoid holding the
+model in RAM twice — you have to restart it afterward anyway (the app caches the library at
+startup), so this just covers the build with the same downtime:
+
+```bash
+# in /root/classics on the droplet
+git pull                # only if library.txt changed in the repo
+systemctl stop classics
+uv run main.py sync
+systemctl start classics
+```
+
+On a comfortably-sized droplet you can skip the stop and just `systemctl restart classics` after
+the sync.
 
 4. FastAPI service
 
