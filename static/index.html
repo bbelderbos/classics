@@ -53,6 +53,10 @@
       .theme-toggle:hover { border-color: var(--accent); }
       .wrap { max-width: 860px; margin: 0 auto; padding: 2.5rem 1.25rem 6rem; }
       header { text-align: center; margin-bottom: 2.5rem; }
+      #homeLink { cursor: pointer; display: inline-block; }
+      .site-footer { text-align: center; margin-top: 3rem; padding-bottom: 5rem; font-size: 0.85rem; }
+      .site-footer a { color: var(--muted); text-decoration: none; border-bottom: 1px solid transparent; }
+      .site-footer a:hover { color: var(--accent); border-bottom-color: var(--accent); }
       h1 { font-size: 2.4rem; margin: 0 0 0.3rem; letter-spacing: 0.5px; }
       .tagline { color: var(--muted); font-style: italic; margin: 0; }
       form { display: flex; gap: 0.5rem; margin: 2rem 0 0.5rem; }
@@ -199,6 +203,8 @@
       .export-bar[hidden] { display: none; }
       .export-bar span { color: var(--muted); font-size: 0.85rem; }
       .export-bar button { padding: 0.5rem 1rem; font-size: 0.9rem; }
+      .export-bar .export-x { padding: 0 0.55rem; font-size: 1.25rem; line-height: 1; background: transparent; border: none; color: var(--muted); border-radius: 999px; }
+      .export-bar .export-x:hover { color: var(--accent); }
       .preview { color: var(--muted); margin: 0.5rem 0 0; font-style: italic; }
       .full { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
       .full[hidden] { display: none; }
@@ -210,7 +216,9 @@
         hyphens: auto;
       }
       .full p:first-letter { /* gentle lead-in, not a full drop cap */ }
-      .full .read-hint { color: var(--muted); font-style: italic; font-size: 0.82rem; margin-bottom: 1rem; }
+      .full .read-hint { color: var(--muted); font-style: italic; font-size: 0.82rem; margin-bottom: 1rem; transition: color 0.2s; }
+      .full .read-hint.nudge { color: var(--accent); font-weight: 600; }
+      .share-lines { margin-top: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem; }
       .full mark {
         background: none;
         color: inherit;
@@ -264,7 +272,7 @@
     <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">☾</button>
     <div class="wrap">
       <header>
-        <h1>classics</h1>
+        <h1 id="homeLink" title="Start a new search" role="button" tabindex="0">classics</h1>
         <p class="tagline">Bring a question. Find where the canon speaks to it.</p>
       </header>
 
@@ -333,6 +341,9 @@
       </section>
 
       <div id="results"></div>
+      <footer class="site-footer">
+        <a href="https://github.com/bbelderbos/classics" target="_blank" rel="noopener">Source on GitHub</a>
+      </footer>
     </div>
 
     <button id="floatShare" class="float-share" hidden>Share as image</button>
@@ -340,6 +351,7 @@
     <div id="exportBar" class="export-bar" hidden>
       <span id="exportCount"></span>
       <button id="exportBtn" type="button">Download PDF</button>
+      <button id="exportClear" class="export-x" type="button" aria-label="Clear selection" title="Clear selection">×</button>
     </div>
 
     <div id="overlay" class="overlay" hidden>
@@ -366,8 +378,10 @@
       const exportBar = document.getElementById("exportBar");
       const exportBtn = document.getElementById("exportBtn");
       const exportCount = document.getElementById("exportCount");
+      const exportClear = document.getElementById("exportClear");
 
       let selection = null; // { text, author, title, query }
+      let selectionSource = null; // the .full element the stored selection lives in
       let activeQuery = "";
       const selected = new Set(); // match objects picked for the PDF
 
@@ -394,6 +408,28 @@
           search(chip.textContent);
         })
       );
+
+      function resetSearch() {
+        input.value = "";
+        results.innerHTML = "";
+        document.getElementById("pitch").hidden = false;
+        selected.clear();
+        document.querySelectorAll("input.pick").forEach((c) => (c.checked = false));
+        updateExportBar();
+        floatShare.hidden = true;
+        activeQuery = "";
+        window.scrollTo(0, 0);
+        input.focus();
+      }
+
+      const homeLink = document.getElementById("homeLink");
+      homeLink.addEventListener("click", resetSearch);
+      homeLink.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          resetSearch();
+        }
+      });
 
       async function search(q, expanded = false) {
         document.getElementById("pitch").hidden = true;
@@ -454,12 +490,24 @@
             <div class="full" hidden data-author="${escapeHtml(m.author)}" data-title="${escapeHtml(
             m.title
           )}">
-              <p class="read-hint">Select any lines to share as an image.</p>
+              <p class="read-hint">Select any lines, then tap below to share them as an image.</p>
               ${paras}
+              <button class="share-lines" type="button">Share selected lines as image</button>
             </div>`;
           const full = card.querySelector(".full");
           card.querySelector(".head").addEventListener("click", () => {
             full.hidden = !full.hidden;
+          });
+          card.querySelector(".share-lines").addEventListener("click", () => {
+            if (selection && selectionSource === full && selection.text) {
+              openOverlay(renderImage(selection));
+              logQuote(selection);
+              floatShare.hidden = true;
+            } else {
+              const hint = card.querySelector(".read-hint");
+              hint.classList.add("nudge");
+              setTimeout(() => hint.classList.remove("nudge"), 1200);
+            }
           });
           card.querySelector(".actions").addEventListener("click", (e) => e.stopPropagation());
           const copyBtn = card.querySelector(".copy-btn");
@@ -483,30 +531,37 @@
       document.addEventListener("mouseup", () => setTimeout(updateFloat, 0));
       document.addEventListener("scroll", () => (floatShare.hidden = true), true);
 
-      function updateFloat() {
+      function captureSelection() {
         const sel = window.getSelection();
-        if (!sel || sel.isCollapsed) {
-          floatShare.hidden = true;
-          return;
-        }
+        if (!sel || sel.isCollapsed) return null;
         const node = sel.anchorNode;
         const full = node && (node.nodeType === 1 ? node : node.parentElement)?.closest(".full");
         const text = sel.toString().trim();
-        if (!full || !text) {
+        if (!full || !text) return null;
+        selection = { text, author: full.dataset.author, title: full.dataset.title, query: activeQuery };
+        selectionSource = full;
+        return sel;
+      }
+
+      function updateFloat() {
+        const sel = captureSelection();
+        if (!sel) {
           floatShare.hidden = true;
           return;
         }
-        selection = {
-          text,
-          author: full.dataset.author,
-          title: full.dataset.title,
-          query: activeQuery,
-        };
         const r = sel.getRangeAt(0).getBoundingClientRect();
         floatShare.style.top = `${window.scrollY + r.top - 42}px`;
         floatShare.style.left = `${window.scrollX + r.left}px`;
         floatShare.hidden = false;
       }
+
+      // iOS doesn't deliver a usable mouseup for text selection, but selectionchange fires;
+      // keep the stored selection fresh so the in-card share button works on touch.
+      let selTimer;
+      document.addEventListener("selectionchange", () => {
+        clearTimeout(selTimer);
+        selTimer = setTimeout(captureSelection, 150);
+      });
 
       floatShare.addEventListener("mousedown", (e) => e.preventDefault());
       floatShare.addEventListener("click", () => {
@@ -706,6 +761,12 @@
         exportBar.hidden = n === 0;
         exportCount.textContent = `${n} selected`;
       }
+
+      exportClear.addEventListener("click", () => {
+        selected.clear();
+        document.querySelectorAll("input.pick").forEach((c) => (c.checked = false));
+        updateExportBar();
+      });
 
       function slugify(q) {
         const base = q.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
