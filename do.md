@@ -47,30 +47,36 @@ apt install -y caddy sqlite3 python3-pip libpango-1.0-0 libpangoft2-1.0-0 libhar
 
 3. The model and embeddings
 
-Copy the huggingface cache (the embedding model) to the droplet so `sync` can embed offline:
+Copy the huggingface cache (the embedding model) to the droplet — the web app needs it at runtime
+to embed each incoming query:
 
 ```bash
 scp -i ~/.ssh/id_do -r ~/.cache/huggingface root@ip:/root/.cache/
 ```
 
-The `books/` embeddings are no longer copied by hand. `library.txt` is the source of truth, so
-the droplet builds them itself with `sync`: it fetches the text for any new ids from Gutenberg,
-embeds them with the cached model, and deletes the files for ids you removed from `library.txt`.
-
-`sync` loads the model to embed, so on a small droplet stop the service first to avoid holding the
-model in RAM twice — you have to restart it afterward anyway (the app caches the library at
-startup), so this just covers the build with the same downtime:
+For the `books/` embeddings, **build locally and rsync the artifacts up** — this is the default.
+Embedding is the only expensive step, and your laptop is far faster than the droplet (and avoids
+loading the model into the droplet's RAM at all). `library.txt` is the source of truth: edit it,
+reconcile locally, then mirror `books/` to the droplet.
 
 ```bash
-# in /root/classics on the droplet
-git pull                # only if library.txt changed in the repo
-systemctl stop classics
+# local: build new embeddings, prune removed ones
 uv run main.py sync
-systemctl start classics
+
+# mirror the artifacts up — --delete propagates removals, the trailing slash on books/ matters
+rsync -az --delete -e "ssh -i ~/.ssh/id_do" books/ root@ip:/root/classics/books/
+
+# the app caches the library at startup, so restart to pick up the change
+ssh -i ~/.ssh/id_do root@ip systemctl restart classics
 ```
 
-On a comfortably-sized droplet you can skip the stop and just `systemctl restart classics` after
-the sync.
+Use plain `scp` only if you don't have rsync — but note it won't delete the files for books you
+dropped from `library.txt`, leaving orphans the app will still load.
+
+> Fallback — building on the droplet. If you can't build locally, `git pull` and run
+> `uv run main.py sync` on the droplet to fetch + embed there. It loads the model, so on a small
+> droplet `systemctl stop classics` first (you restart afterward anyway) to avoid holding the model
+> in RAM twice and risking an OOM.
 
 4. FastAPI service
 
