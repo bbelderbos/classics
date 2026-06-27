@@ -205,7 +205,8 @@
       .export-bar button { padding: 0.5rem 1rem; font-size: 0.9rem; }
       .export-bar .export-x { padding: 0 0.55rem; font-size: 1.25rem; line-height: 1; background: transparent; border: none; color: var(--muted); border-radius: 999px; }
       .export-bar .export-x:hover { color: var(--accent); }
-      .preview { color: var(--muted); margin: 0.5rem 0 0; font-style: italic; }
+      .card-meta { color: var(--muted); margin: 0.5rem 0 0; font-size: 0.85rem; }
+      .demo-card .preview { color: var(--muted); margin: 0.5rem 0 0; font-style: italic; }
       .full { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
       .full[hidden] { display: none; }
       .full p {
@@ -482,6 +483,7 @@
           const paras = paragraphize(m.text)
             .map((p) => `<p>${escapeHtml(p)}</p>`)
             .join("");
+          const { word } = resonance(m.score);
           card.innerHTML = `
             <div class="head">
               <div class="cite">
@@ -491,7 +493,7 @@
                   <label class="pick-label"><input type="checkbox" class="pick" /> PDF</label>
                 </span>
               </div>
-              <p class="preview">${escapeHtml(preview(m.text))}</p>
+              <p class="card-meta">${word} · ${readingTime(m.text)}</p>
             </div>
             <div class="full" hidden data-author="${escapeHtml(m.author)}" data-title="${escapeHtml(
             m.title
@@ -500,10 +502,8 @@
               ${paras}
             </div>`;
           const full = card.querySelector(".full");
-          const previewEl = card.querySelector(".preview");
           card.querySelector(".head").addEventListener("click", () => {
             full.hidden = !full.hidden;
-            previewEl.hidden = !full.hidden;
             if (!full.hidden) {
               full.dataset.openedAt = performance.now();
             } else {
@@ -853,9 +853,9 @@
         return a;
       }
 
-      function preview(text, width = 150) {
-        const line = squish(text);
-        return line.length > width ? line.slice(0, width) + "…" : line;
+      function readingTime(text, wpm = 200) {
+        const words = squish(text).split(" ").filter(Boolean).length;
+        return `~${Math.max(1, Math.round(words / wpm))} min read`;
       }
 
       function escapeHtml(s) {
