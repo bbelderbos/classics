@@ -216,9 +216,7 @@
         hyphens: auto;
       }
       .full p:first-letter { /* gentle lead-in, not a full drop cap */ }
-      .full .read-hint { color: var(--muted); font-style: italic; font-size: 0.82rem; margin-bottom: 1rem; transition: color 0.2s; }
-      .full .read-hint.nudge { color: var(--accent); font-weight: 600; }
-      .share-lines { margin-top: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem; }
+      .full .read-hint { color: var(--muted); font-style: italic; font-size: 0.82rem; margin-bottom: 1rem; }
       .full mark {
         background: none;
         color: inherit;
@@ -241,6 +239,15 @@
         white-space: nowrap;
       }
       .float-share[hidden] { display: none; }
+      /* iOS: native selection toolbar covers the inline spot, so dock the button at the bottom */
+      .float-share.docked {
+        position: fixed;
+        top: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+        z-index: 46;
+      }
 
       .overlay {
         position: fixed;
@@ -381,7 +388,6 @@
       const exportClear = document.getElementById("exportClear");
 
       let selection = null; // { text, author, title, query }
-      let selectionSource = null; // the .full element the stored selection lives in
       let activeQuery = "";
       const selected = new Set(); // match objects picked for the PDF
 
@@ -490,9 +496,8 @@
             <div class="full" hidden data-author="${escapeHtml(m.author)}" data-title="${escapeHtml(
             m.title
           )}">
-              <p class="read-hint">Select any lines, then tap below to share them as an image.</p>
+              <p class="read-hint">Select any lines to share them as an image.</p>
               ${paras}
-              <button class="share-lines" type="button">Share selected lines as image</button>
             </div>`;
           const full = card.querySelector(".full");
           const previewEl = card.querySelector(".preview");
@@ -503,17 +508,6 @@
               full.dataset.openedAt = performance.now();
             } else {
               flushRead(full);
-            }
-          });
-          card.querySelector(".share-lines").addEventListener("click", () => {
-            if (selection && selectionSource === full && selection.text) {
-              openOverlay(renderImage(selection));
-              logQuote(selection);
-              floatShare.hidden = true;
-            } else {
-              const hint = card.querySelector(".read-hint");
-              hint.classList.add("nudge");
-              setTimeout(() => hint.classList.remove("nudge"), 1200);
             }
           });
           card.querySelector(".actions").addEventListener("click", (e) => e.stopPropagation());
@@ -535,8 +529,11 @@
         }
       }
 
+      const isTouch = matchMedia("(pointer: coarse)").matches;
       document.addEventListener("mouseup", () => setTimeout(updateFloat, 0));
-      document.addEventListener("scroll", () => (floatShare.hidden = true), true);
+      document.addEventListener("scroll", () => {
+        if (!isTouch) floatShare.hidden = true;
+      }, true);
 
       function captureSelection() {
         const sel = window.getSelection();
@@ -546,7 +543,6 @@
         const text = sel.toString().trim();
         if (!full || !text) return null;
         selection = { text, author: full.dataset.author, title: full.dataset.title, query: activeQuery };
-        selectionSource = full;
         return sel;
       }
 
@@ -563,11 +559,16 @@
       }
 
       // iOS doesn't deliver a usable mouseup for text selection, but selectionchange fires;
-      // keep the stored selection fresh so the in-card share button works on touch.
+      // dock the share pill at the bottom there so it clears the native selection toolbar.
       let selTimer;
       document.addEventListener("selectionchange", () => {
         clearTimeout(selTimer);
-        selTimer = setTimeout(captureSelection, 150);
+        selTimer = setTimeout(() => {
+          const sel = captureSelection();
+          if (!isTouch) return;
+          floatShare.classList.add("docked");
+          floatShare.hidden = !sel;
+        }, 150);
       });
 
       floatShare.addEventListener("mousedown", (e) => e.preventDefault());
