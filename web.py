@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from db import QuoteEvent, SearchEvent, init_db, record
 from main import (
+    embed,
     Passage,
     humanize_author,
     load_library,
@@ -32,10 +33,10 @@ async def lifespan(app: FastAPI):
     )
     init_db()
 
-    # 🔥 pre-warm the cache upon start so first user query doesn't have to do it
     logger.info("Pre-warming vector library and loading transformer models into RAM...")
-    _ = library()
-    logger.info("Library pre-warmed successfully, queries should be fast now.")
+    _ = library()  # Pre-loads the book arrays
+    _ = embed(["warmup"])  # Forces PyTorch to wake up and allocate memory
+    logger.info("System pre-warmed successfully. Ready for traffic.")
 
     yield
 
