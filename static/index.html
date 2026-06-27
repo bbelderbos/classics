@@ -389,7 +389,7 @@
           const card = document.createElement("div");
           card.className = "card";
           const paras = paragraphize(m.text)
-            .map((p) => `<p>${p}</p>`)
+            .map((p) => `<p>${escapeHtml(p)}</p>`)
             .join("");
           card.innerHTML = `
             <div class="head">
