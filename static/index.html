@@ -149,6 +149,9 @@
       .head { cursor: pointer; }
       .cite { display: flex; align-items: center; gap: 0.6rem; justify-content: space-between; }
       .where { font-weight: 600; }
+      .meter { display: inline-flex; gap: 3px; align-items: center; vertical-align: middle; margin-left: 0.5rem; }
+      .meter .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: 0.28; }
+      .meter .dot.on { background: var(--accent); opacity: 1; }
       .actions { flex: none; display: flex; align-items: center; gap: 0.6rem; }
       .copy-btn {
         padding: 0.25rem 0.7rem;
@@ -275,12 +278,13 @@
         <p class="pitch-lead">Not sure where to start? Try one:</p>
         <div class="examples">
           <button class="chip">Is it better to be feared or loved?</button>
+          <button class="chip">What is the secret to getting rich?</button>
+          <button class="chip">What do my dreams mean?</button>
+          <button class="chip">What is true friendship?</button>
           <button class="chip">How can suffering have meaning?</button>
-          <button class="chip">How do I find courage when I'm afraid?</button>
-          <button class="chip">How do I keep hope in dark times?</button>
-          <button class="chip">Is wealth worth pursuing?</button>
+          <button class="chip">What makes a leader worth following?</button>
         </div>
-        <p class="pitch-now">People want the classics. Nobody has four quiet hours anymore, and the page count is its own wall. <strong>So take one page</strong> — the one that answers the question you actually have.</p>
+        <p class="pitch-now">People want the classics. Nobody has four quiet hours anymore, and the page count is its own wall. <strong>So take one page</strong> — written by someone who wrestled with the same question you have.</p>
         <p class="pitch-lead">Why not just ask ChatGPT?</p>
         <div class="manifesto-grid">
           <div class="manifesto-card">
@@ -373,6 +377,21 @@
         }
       }
 
+      // thresholds calibrated against the live library's displayed-score distribution
+      function resonance(score) {
+        if (score >= 0.58) return { n: 4, word: "Speaks directly" };
+        if (score >= 0.46) return { n: 3, word: "Resonates" };
+        if (score >= 0.37) return { n: 2, word: "A kindred echo" };
+        return { n: 1, word: "A distant echo" };
+      }
+
+      function meterHtml(score) {
+        const { n, word } = resonance(score);
+        let dots = "";
+        for (let i = 0; i < 4; i++) dots += `<i class="dot${i < n ? " on" : ""}"></i>`;
+        return `<span class="meter" title="${word}" aria-label="${word}">${dots}</span>`;
+      }
+
       function render(q, matches, expanded = false) {
         if (!matches.length) {
           results.innerHTML = `<p class="status">Nothing strong enough for “${escapeHtml(
@@ -394,7 +413,7 @@
           card.innerHTML = `
             <div class="head">
               <div class="cite">
-                <span class="where">${escapeHtml(m.cite)}</span>
+                <span class="where">${escapeHtml(m.cite)}${meterHtml(m.score)}</span>
                 <span class="actions">
                   <button class="copy-btn" type="button">Copy</button>
                   <label class="pick-label"><input type="checkbox" class="pick" /> PDF</label>
