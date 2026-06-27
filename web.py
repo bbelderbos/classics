@@ -122,7 +122,7 @@ PDF_CSS = """
     size: A4;
     margin: 2.4cm 2cm 2cm;
     @top-left { content: "CLASSICS"; font-family: Georgia, serif; font-size: 8pt; letter-spacing: 3px; color: #b9ad97; }
-    @top-right { content: "belderbos.dev/classics"; font-family: Georgia, serif; font-size: 8pt; color: #b9ad97; }
+    @top-right { content: "askthecanon.com"; font-family: Georgia, serif; font-size: 8pt; color: #b9ad97; }
     @bottom-center { content: counter(page); font-family: Georgia, serif; font-size: 9pt; color: #b9ad97; }
 }
 html { background: #fffdf8; }
