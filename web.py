@@ -150,12 +150,6 @@ body {
 u { text-decoration-color: rgba(138, 90, 43, 0.5); text-underline-offset: 2px; }
 """
 
-_WORD = re.compile(r"\S+")
-
-
-def _norm(word: str) -> str:
-    return re.sub(r"[\W_]+", "", word.lower())
-
 
 class PdfItem(BaseModel):
     author: str = ""
