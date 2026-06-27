@@ -499,6 +499,11 @@
           card.querySelector(".head").addEventListener("click", () => {
             full.hidden = !full.hidden;
             previewEl.hidden = !full.hidden;
+            if (!full.hidden) {
+              full.dataset.openedAt = performance.now();
+            } else {
+              flushRead(full);
+            }
           });
           card.querySelector(".share-lines").addEventListener("click", () => {
             if (selection && selectionSource === full && selection.text) {
@@ -581,6 +586,35 @@
           body: JSON.stringify({ text, author, title, query }),
         }).catch(() => {});
       }
+
+      // measures how long a passage stays expanded; flushed on collapse and on page hide
+      function flushRead(full) {
+        const openedAt = full.dataset.openedAt;
+        if (!openedAt) return;
+        delete full.dataset.openedAt;
+        const ms = Math.round(performance.now() - openedAt);
+        if (ms < 1000) return; // ignore accidental opens
+        const body = JSON.stringify({
+          query: activeQuery,
+          author: full.dataset.author,
+          title: full.dataset.title,
+          ms,
+        });
+        const blob = new Blob([body], { type: "application/json" });
+        if (!navigator.sendBeacon?.("/api/read", blob)) {
+          fetch("/api/read", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+          }).catch(() => {});
+        }
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          document.querySelectorAll(".full").forEach(flushRead);
+        }
+      });
 
       function openOverlay(canvas) {
         overlayImg.src = canvas.toDataURL("image/png");

@@ -1,19 +1,30 @@
 from contextlib import asynccontextmanager
 import json
 import logging
+import os
 import re
+import secrets
 import time
 from functools import cache
 from html import escape
 from pathlib import Path
 
 import numpy as np
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import FileResponse, Response
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from mdweaver import weave_pdf
 from pydantic import BaseModel
 
-from db import QuoteEvent, SearchEvent, init_db, record
+from db import (
+    PdfEvent,
+    QuoteEvent,
+    ReadEvent,
+    SearchEvent,
+    init_db,
+    record,
+    stats,
+)
 from main import (
     embed,
     Passage,
@@ -43,6 +54,27 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="classics", lifespan=lifespan)
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
+STATS_HTML = Path(__file__).parent / "static" / "stats.html"
+
+security = HTTPBasic()
+
+
+def require_stats_auth(creds: HTTPBasicCredentials = Depends(security)) -> None:
+    password = os.environ.get("STATS_PASSWORD")
+    if not password:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "stats dashboard not configured"
+        )
+    user = os.environ.get("STATS_USER", "admin")
+    ok = secrets.compare_digest(creds.username, user) & secrets.compare_digest(
+        creds.password, password
+    )
+    if not ok:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "invalid credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
 
 
 @cache
@@ -63,6 +95,16 @@ class Match(BaseModel):
 @app.get("/")
 def home() -> FileResponse:
     return FileResponse(INDEX_HTML)
+
+
+@app.get("/stats")
+def stats_page(_: None = Depends(require_stats_auth)) -> FileResponse:
+    return FileResponse(STATS_HTML)
+
+
+@app.get("/api/stats")
+def api_stats(_: None = Depends(require_stats_auth)) -> dict:
+    return stats()
 
 
 @app.get("/api/ask")
@@ -120,6 +162,26 @@ def quote(body: QuoteIn) -> dict[str, bool]:
             author=body.author,
             title=body.title,
             text=body.text,
+        )
+    )
+    return {"ok": True}
+
+
+class ReadIn(BaseModel):
+    query: str = ""
+    author: str = ""
+    title: str = ""
+    ms: int
+
+
+@app.post("/api/read")
+def read(body: ReadIn) -> dict[str, bool]:
+    record(
+        ReadEvent(
+            query=body.query,
+            author=body.author,
+            title=body.title,
+            ms=body.ms,
         )
     )
     return {"ok": True}
@@ -199,6 +261,7 @@ def _slug(query: str) -> str:
 def pdf(body: PdfIn) -> Response:
     document = _pdf_document(body.query, body.items)
     data = weave_pdf(document, PDF_CSS)
+    record(PdfEvent(query=body.query, passages=len(body.items)))
     return Response(
         content=data,
         media_type="application/pdf",

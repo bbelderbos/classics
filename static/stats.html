@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>classics · stats</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font: 15px/1.5 system-ui, sans-serif;
+        margin: 0 auto;
+        padding: 2rem;
+        max-width: 960px;
+      }
+      h1 {
+        font-size: 1.2rem;
+        margin: 0 0 0.25rem;
+      }
+      .sub {
+        color: #6b7280;
+        margin: 0 0 1.5rem;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 1rem 0 0.5rem;
+      }
+      .card {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 1rem;
+      }
+      .card .n {
+        font-size: 1.8rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .card .l {
+        color: #6b7280;
+        font-size: 0.85rem;
+      }
+      .at {
+        color: #9ca3af;
+        font-size: 0.85rem;
+        margin: 0 0 2rem;
+      }
+      .tables {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+      }
+      h2 {
+        font-size: 0.95rem;
+        margin: 0 0 0.5rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      td {
+        padding: 0.3rem 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      td.c {
+        text-align: right;
+        color: #6b7280;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        padding-left: 1rem;
+      }
+      .empty {
+        color: #9ca3af;
+        font-style: italic;
+      }
+      @media (max-width: 640px) {
+        .cards {
+          grid-template-columns: 1fr 1fr;
+        }
+        .tables {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>classics</h1>
+    <p class="sub">Last 7 days · anonymous aggregates</p>
+
+    <div class="cards" id="cards"></div>
+    <p class="at" id="alltime"></p>
+
+    <div class="tables">
+      <div>
+        <h2>Top searches</h2>
+        <div id="searches"></div>
+      </div>
+      <div>
+        <h2>Most-lingered passages</h2>
+        <div id="reads"></div>
+      </div>
+    </div>
+
+    <script>
+      const esc = (s) => {
+        const d = document.createElement("div");
+        d.textContent = s ?? "";
+        return d.innerHTML;
+      };
+
+      function cards(week) {
+        const items = [
+          [week.queries, "Questions asked"],
+          [week.reads, "Passages read"],
+          [week.reading_minutes, "Reading minutes"],
+          [week.avg_read_seconds, "Avg read (s)"],
+          [week.shares, "Image shares"],
+          [week.pdfs, "PDF exports"],
+        ];
+        document.getElementById("cards").innerHTML = items
+          .map(([n, l]) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`)
+          .join("");
+      }
+
+      function table(el, rows, cells, emptyMsg) {
+        const node = document.getElementById(el);
+        if (!rows.length) {
+          node.innerHTML = `<p class="empty">${emptyMsg}</p>`;
+          return;
+        }
+        node.innerHTML = `<table>${rows.map(cells).join("")}</table>`;
+      }
+
+      async function load() {
+        const res = await fetch("/api/stats");
+        if (!res.ok) {
+          document.body.innerHTML = "<p>Could not load stats.</p>";
+          return;
+        }
+        const d = await res.json();
+        cards(d.week);
+        const a = d.all_time;
+        document.getElementById("alltime").textContent =
+          `All time — ${a.queries} questions · ${a.reads} reads · ${a.reading_minutes} reading minutes · ${a.shares} shares · ${a.pdfs} PDFs`;
+        table(
+          "searches",
+          d.top_searches,
+          (r) => `<tr><td>${esc(r.query)}</td><td class="c">${r.n}</td></tr>`,
+          "No searches yet."
+        );
+        table(
+          "reads",
+          d.top_reads,
+          (r) =>
+            `<tr><td>${esc([r.author, r.title].filter(Boolean).join(" · "))}</td><td class="c">${r.avg_seconds}s · ${r.reads}×</td></tr>`,
+          "Not enough reads yet."
+        );
+      }
+
+      load();
+    </script>
+  </body>
+</html>

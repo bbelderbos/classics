@@ -92,11 +92,31 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=/root/classics
+EnvironmentFile=/etc/classics.env
 ExecStart=/root/.local/bin/uv run gunicorn web:app -w 1 -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
+```
+
+`STATS_USER` / `STATS_PASSWORD` gate the `/stats` dashboard (and `/api/stats`) behind
+HTTP Basic Auth — without them the endpoints return 503, so set them before relying on
+the dashboard. `STATS_USER` defaults to `admin`; pick a strong `STATS_PASSWORD`.
+
+Don't inline the password in the unit file — a systemd unit is world-readable
+(`systemctl cat classics` would print the secret). Put it in an `EnvironmentFile`
+locked down to root instead:
+
+```bash
+cat > /etc/classics.env <<'EOF'
+STATS_USER=admin
+STATS_PASSWORD=use-a-long-random-string
+EOF
+chmod 600 /etc/classics.env   # root-only
+
+systemctl daemon-reload
+systemctl restart classics
 ```
 
 You can invoke and restart the service with:
