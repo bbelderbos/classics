@@ -78,7 +78,7 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
     record(SearchEvent(query=q, results=json.dumps(shown)))
     t1 = time.perf_counter()
     logger.info(
-        "ask q=%r results=%d search=%.2f",
+        "ask q=%r results=%d search=%.2fs",
         q,
         len(ranked),
         t1 - t0,
