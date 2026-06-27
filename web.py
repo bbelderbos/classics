@@ -16,7 +16,6 @@ from pydantic import BaseModel
 from db import QuoteEvent, SearchEvent, init_db, record
 from main import (
     Passage,
-    best_excerpts,
     humanize_author,
     load_library,
     reflow,
@@ -52,7 +51,6 @@ class Match(BaseModel):
     title: str
     label: str
     text: str
-    highlight: str
 
 
 @app.get("/")
@@ -67,7 +65,6 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
         return []
     t0 = time.perf_counter()
     ranked = search_passages(q, passages, vectors, k, per_book, floor)
-    t1 = time.perf_counter()
     shown = [
         {
             "id": passages[i].book_id,
@@ -78,15 +75,12 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
         for i, score in ranked
     ]
     record(SearchEvent(query=q, results=json.dumps(shown)))
-    highlights = best_excerpts([passages[i].text for i, _ in ranked], q)
-    t2 = time.perf_counter()
+    t1 = time.perf_counter()
     logger.info(
-        "ask q=%r results=%d search=%.2fs highlight=%.2fs total=%.2fs",
+        "ask q=%r results=%d search=%.2f",
         q,
         len(ranked),
         t1 - t0,
-        t2 - t1,
-        t2 - t0,
     )
     return [
         Match(
@@ -97,7 +91,6 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
             title=passages[i].title,
             label=passages[i].label,
             text=reflow(passages[i].text),
-            highlight=highlights[rank - 1],
         )
         for rank, (i, score) in enumerate(ranked, 1)
     ]
@@ -163,42 +156,11 @@ def _norm(word: str) -> str:
     return re.sub(r"[\W_]+", "", word.lower())
 
 
-# underline the best-matching span within a paragraph (port of the front-end markMatch)
-def _underline(paragraph: str, excerpt: str) -> str:
-    if not excerpt:
-        return escape(paragraph)
-    tokens = [
-        (m.start(), m.end(), _norm(m.group()))
-        for m in _WORD.finditer(paragraph)
-        if _norm(m.group())
-    ]
-    hay = " " + " ".join(filter(None, (_norm(w) for w in excerpt.split()))) + " "
-    best: tuple[int, int] | None = None
-    for a in range(len(tokens)):
-        run = ""
-        for b in range(a, len(tokens)):
-            nxt = f"{run} {tokens[b][2]}" if run else tokens[b][2]
-            if f" {nxt} " not in hay:
-                break
-            run = nxt
-            if best is None or b - a > best[1] - best[0]:
-                best = (a, b)
-    if best is None or best[1] - best[0] < 3:
-        return escape(paragraph)
-    start, end = tokens[best[0]][0], tokens[best[1]][1]
-    return (
-        escape(paragraph[:start])
-        + f"<u>{escape(paragraph[start:end])}</u>"
-        + escape(paragraph[end:])
-    )
-
-
 class PdfItem(BaseModel):
     author: str = ""
     title: str = ""
     label: str = ""
     text: str
-    highlight: str = ""
 
 
 class PdfIn(BaseModel):
@@ -220,7 +182,7 @@ def _pdf_document(query: str, items: list[PdfItem]) -> str:
             parts.append(f'<p class="label">{escape(item.label)}</p>')
         for para in (p.strip() for p in item.text.split("\n\n")):
             if para:
-                parts.append(f'<p class="text">{_underline(para, item.highlight)}</p>')
+                parts.append(f'<p class="text">{para}</p>')
         parts.append("</div>")
     return "\n".join(parts)
 
