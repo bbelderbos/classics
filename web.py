@@ -31,6 +31,12 @@ async def lifespan(app: FastAPI):
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
     )
     init_db()
+
+    # 🔥 pre-warm the cache upon start so first user query doesn't have to do it
+    logger.info("Pre-warming vector library and loading transformer models into RAM...")
+    _ = library()
+    logger.info("Library pre-warmed successfully, queries should be fast now.")
+
     yield
 
 
@@ -60,6 +66,8 @@ def home() -> FileResponse:
 
 @app.get("/api/ask")
 def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match]:
+    # should load from cache at this point, because it's pre-warmed in the
+    # lifespan context manager
     passages, vectors = library()
     if not passages:
         return []
