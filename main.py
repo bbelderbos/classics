@@ -218,14 +218,12 @@ def best_excerpts(
     texts: list[str],
     query: str,
     max_words: int = 60,
-    embed_fn: Callable[[list[str]], np.ndarray] | None = None,
 ) -> list[str]:
-    fn = embed_fn if embed_fn is not None else embed
     per_text = [split_sentences(t) for t in texts]
     flat = [s for sentences in per_text for s in sentences]
     if not flat:
         return [reflow(t) for t in texts]
-    scores = fn(flat) @ fn([query])[0]
+    scores = embed(flat) @ embed([query])[0]
     out: list[str] = []
     pos = 0
     for text, sentences in zip(texts, per_text):

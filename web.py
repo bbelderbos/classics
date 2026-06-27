@@ -16,12 +16,12 @@ from pydantic import BaseModel
 from db import QuoteEvent, SearchEvent, init_db, record
 from main import (
     Passage,
-    best_excerpts,
     humanize_author,
     reflow,
     search_passages,
     EMBED_MODEL,
     load_library,
+    preview,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,9 +100,7 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
         for i, score in ranked
     ]
     record(SearchEvent(query=q, results=json.dumps(shown)))
-    highlights = best_excerpts(
-        [passages[i].text for i, _ in ranked], q, embed_fn=state["embed"]
-    )
+    highlights = [preview(passages[i].text, width=150) for i, _ in ranked]
     t2 = time.perf_counter()
     logger.info(
         "ask q=%r results=%d search=%.2fs highlight=%.2fs total=%.2fs",
