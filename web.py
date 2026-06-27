@@ -1,6 +1,5 @@
 from contextlib import asynccontextmanager
 import json
-import html
 import logging
 import re
 import time
@@ -177,7 +176,7 @@ def _pdf_document(query: str, items: list[PdfItem]) -> str:
             parts.append(f'<p class="label">{escape(item.label)}</p>')
         for para in (p.strip() for p in item.text.split("\n\n")):
             if para:
-                parts.append(f'<p class="text">{html.escape(para)}</p>')
+                parts.append(f'<p class="text">{escape(para)}</p>')
         parts.append("</div>")
     return "\n".join(parts)
 
