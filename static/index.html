@@ -495,8 +495,10 @@
               <button class="share-lines" type="button">Share selected lines as image</button>
             </div>`;
           const full = card.querySelector(".full");
+          const previewEl = card.querySelector(".preview");
           card.querySelector(".head").addEventListener("click", () => {
             full.hidden = !full.hidden;
+            previewEl.hidden = !full.hidden;
           });
           card.querySelector(".share-lines").addEventListener("click", () => {
             if (selection && selectionSource === full && selection.text) {
