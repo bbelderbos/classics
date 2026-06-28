@@ -55,6 +55,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="classics", lifespan=lifespan)
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 STATS_HTML = Path(__file__).parent / "static" / "stats.html"
+FAVICON = Path(__file__).parent / "static" / "favicon.svg"
 
 security = HTTPBasic()
 
@@ -96,6 +97,11 @@ class Match(BaseModel):
 @app.get("/")
 def home() -> FileResponse:
     return FileResponse(INDEX_HTML)
+
+
+@app.get("/favicon.svg")
+def favicon() -> FileResponse:
+    return FileResponse(FAVICON, media_type="image/svg+xml")
 
 
 @app.get("/stats")

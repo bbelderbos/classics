@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>classics — search the canon by meaning</title>
     <style>
       :root {
@@ -117,6 +118,9 @@
       .demo-card { cursor: default; flex: 1; margin-bottom: 0; }
       .demo-card:hover { border-color: var(--rule); box-shadow: none; }
       @media (max-width: 640px) { .demo-pair { flex-direction: column; } }
+      .demo-open { margin-top: 1.75rem; }
+      .demo-open .head { cursor: default; }
+      .demo-open .full { margin-top: 0; }
       .manifesto-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -207,7 +211,8 @@
       .export-bar .export-x { padding: 0 0.55rem; font-size: 1.25rem; line-height: 1; background: transparent; border: none; color: var(--muted); border-radius: 999px; }
       .export-bar .export-x:hover { color: var(--accent); }
       .card-meta { color: var(--muted); margin: 0.5rem 0 0; font-size: 0.85rem; }
-      .demo-card .preview { color: var(--muted); margin: 0.5rem 0 0; font-style: italic; }
+      .card .preview { color: var(--muted); margin: 0.5rem 0 0; font-style: italic; }
+      .card.open .preview { display: none; }
       .full { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
       .full[hidden] { display: none; }
       .full p {
@@ -371,6 +376,24 @@
               </div>
             </div>
           </div>
+          <div class="demo-open">
+            <p class="demo-q"><span>And when you open one</span>“What is the meaning of wealth?”</p>
+            <div class="card demo-card">
+              <div class="head">
+                <div class="cite">
+                  <span class="where">Bacon, Francis · Bacon's Essays, and Wisdom of the Ancients</span>
+                </div>
+                <p class="card-meta"><span class="meter" title="Speaks directly" aria-label="Speaks directly"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span>Speaks directly · ~6 min read</p>
+              </div>
+              <div class="full" data-author="Bacon, Francis" data-title="Bacon's Essays, and Wisdom of the Ancients">
+                <p class="book-summary"><span class="label">About this book</span>“Bacon's Essays and Wisdom of the Ancients” by Francis Bacon is a philosophical treatise written in the early 17th century — a collection of his well-known essays on moral and civil themes, interwoven with reflections on human nature and his interpretations of classical wisdom.</p>
+                <p class="read-hint">Select any lines to share them as an image.</p>
+                <p class="lead">I cannot call riches better than the baggage of virtue; the Roman word is better, “impedimenta;” for as the baggage is to an army, so is riches to virtue; it cannot be spared nor left behind, but it hindereth the march; yea, and the care of it sometimes loseth or disturbeth the victory. Of great riches there is no real use, except it be in the distribution; the rest is but conceit.</p>
+                <p>So saith Solomon: “Where much is, there are many to consume it; and what hath the owner, but the sight of it with his eyes?” The personal fruition in any man cannot reach to feel great riches: there is a custody of them, or a power of dole and donative of them, or a fame of them, but no solid use to the owner.</p>
+                <p>Do you not see what feigned prices are set upon little stones and rarities? and what works of ostentation are undertaken, because there might seem to be some use of great riches? But then you will say, they may be of use to buy men out of dangers or troubles…</p>
+              </div>
+            </div>
+          </div>
         </div>
         <p class="pitch-lead">Why not just ask ChatGPT?</p>
         <div class="manifesto-grid">
@@ -392,6 +415,8 @@
       <div id="results"></div>
       <footer class="site-footer">
         <a href="https://github.com/bbelderbos/classics" target="_blank" rel="noopener">Source on GitHub</a>
+        ·
+        <a href="https://belderbos.dev" target="_blank" rel="noopener">belderbos.dev</a>
       </footer>
     </div>
 
@@ -522,7 +547,7 @@
           const card = document.createElement("div");
           card.className = "card";
           const paras = paragraphize(m.text)
-            .map((p, i) => `<p${i === 0 ? ' class="lead"' : ""}>${escapeHtml(p)}</p>`)
+            .map((p, i) => `<p${i === 0 ? ' class="lead"' : ""}>${enrich(p)}</p>`)
             .join("");
           const { word } = resonance(m.score);
           const summaryHtml = m.summary
@@ -540,6 +565,7 @@
                 </span>
               </div>
               <p class="card-meta">${meterHtml(m.score)}${word} · ${readingTime(m.text)}</p>
+              <p class="preview">${escapeHtml(previewText(m.text))}</p>
             </div>
             <div class="full" hidden data-author="${escapeHtml(m.author)}" data-title="${escapeHtml(
             m.title
@@ -551,6 +577,7 @@
           const full = card.querySelector(".full");
           card.querySelector(".head").addEventListener("click", () => {
             full.hidden = !full.hidden;
+            card.classList.toggle("open", !full.hidden);
             if (!full.hidden) {
               full.dataset.openedAt = performance.now();
             } else {
@@ -820,7 +847,7 @@
       function copyFragment(m, btn) {
         const where = [humanize(m.author), m.title].filter(Boolean).join(", ");
         const attr = where + (m.label ? ` (${m.label})` : "");
-        const payload = `${m.text}\n\n— ${attr}`;
+        const payload = `${stripMarkup(m.text)}\n\n— ${attr}`;
         navigator.clipboard
           ?.writeText(payload)
           .then(() => {
@@ -863,7 +890,7 @@
           author: m.author,
           title: m.title,
           label: m.label,
-          text: m.text,
+          text: stripMarkup(m.text),
         }));
         const original = exportBtn.textContent;
         exportBtn.disabled = true;
@@ -909,6 +936,22 @@
         const div = document.createElement("div");
         div.textContent = s;
         return div.innerHTML;
+      }
+
+      // Gutenberg plain-text markup: _italics_ and [123] footnote refs
+      function enrich(p) {
+        return escapeHtml(p)
+          .replace(/\[\d+\]/g, "")
+          .replace(/_([^_]+)_/g, "<em>$1</em>");
+      }
+
+      function stripMarkup(t) {
+        return t.replace(/\[\d+\]/g, "").replace(/_([^_]+)_/g, "$1");
+      }
+
+      function previewText(text, max = 160) {
+        const flat = stripMarkup(squish(text));
+        return flat.length > max ? flat.slice(0, max).trimEnd() + "…" : flat;
       }
     </script>
   </body>
