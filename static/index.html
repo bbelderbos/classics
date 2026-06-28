@@ -942,7 +942,8 @@
         return a;
       }
 
-      function readingTime(text, wpm = 200) {
+      // classics are more dense than typical blog, lowering 200 to 150 wpm
+      function readingTime(text, wpm = 150) {
         const words = squish(text).split(" ").filter(Boolean).length;
         return `~${Math.max(1, Math.round(words / wpm))} min read`;
       }
