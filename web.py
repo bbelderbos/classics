@@ -90,6 +90,7 @@ class Match(BaseModel):
     title: str
     label: str
     text: str
+    summary: str = ""
 
 
 @app.get("/")
@@ -142,6 +143,7 @@ def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match
             title=passages[i].title,
             label=passages[i].label,
             text=reflow(passages[i].text),
+            summary=passages[i].summary,
         )
         for rank, (i, score) in enumerate(ranked, 1)
     ]

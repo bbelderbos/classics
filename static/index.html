@@ -218,6 +218,20 @@
       }
       .full p:first-letter { /* gentle lead-in, not a full drop cap */ }
       .full .read-hint { color: var(--muted); font-style: italic; font-size: 0.82rem; margin-bottom: 1rem; }
+      .full .book-summary {
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.6;
+        max-width: 62ch;
+        margin: 0 0 1.2rem;
+      }
+      .full .book-summary .label {
+        display: block;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+      }
       .full mark {
         background: none;
         color: inherit;
@@ -302,7 +316,7 @@
         <p class="pitch-lead">Not sure where to start? Try one:</p>
         <div class="examples">
           <button class="chip">Is it better to be feared or loved?</button>
-          <button class="chip">What is the secret to getting rich?</button>
+          <button class="chip">What is the meaning of wealth?</button>
           <button class="chip">What do my dreams mean?</button>
           <button class="chip">What is true friendship?</button>
           <button class="chip">How can suffering have meaning?</button>
@@ -484,6 +498,11 @@
             .map((p) => `<p>${escapeHtml(p)}</p>`)
             .join("");
           const { word } = resonance(m.score);
+          const summaryHtml = m.summary
+            ? `<p class="book-summary"><span class="label">About this book</span>${escapeHtml(
+                m.summary
+              )}</p>`
+            : "";
           card.innerHTML = `
             <div class="head">
               <div class="cite">
@@ -498,6 +517,7 @@
             <div class="full" hidden data-author="${escapeHtml(m.author)}" data-title="${escapeHtml(
             m.title
           )}">
+              ${summaryHtml}
               <p class="read-hint">Select any lines to share them as an image.</p>
               ${paras}
             </div>`;

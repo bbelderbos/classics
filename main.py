@@ -36,7 +36,6 @@ class Book(NamedTuple):
     id: int
     title: str
     authors: list[str]
-    summary: str
     languages: list[str]
     download_count: int
 
@@ -49,7 +48,6 @@ def search_book(title: str) -> list[Book]:
             id=int(book["id"]),
             title=book["title"],
             authors=[entry["name"] for entry in book["authors"]],
-            summary=book["summaries"][0] if book["summaries"] else "",
             languages=book["languages"],
             download_count=int(book["download_count"]),
         )
@@ -223,6 +221,7 @@ class Passage(NamedTuple):
     text: str
     book_id: int = 0
     offset: int = 0  # chunk index within the book
+    summary: str = ""  # book-level blurb, repeated across the book's passages
 
     def cite(self) -> str:
         where = " · ".join(part for part in (self.author, self.title) if part)
@@ -237,12 +236,27 @@ class Passage(NamedTuple):
         return f"“{body}”\n\n— {where}"
 
 
-def book_metadata(book_id: int) -> tuple[str, str]:
+SUMMARY_SUFFIX = "(This is an automatically generated summary.)"
+
+
+def clean_summary(summary: str) -> str:
+    return summary.replace(SUMMARY_SUFFIX, "").strip()
+
+
+class BookMeta(NamedTuple):
+    title: str
+    author: str
+    summary: str
+
+
+def book_metadata(book_id: int) -> BookMeta:
     response = requests.get(f"{BOOK_URL}{book_id}", timeout=HTTP_TIMEOUT)
     response.raise_for_status()
     data = response.json()
     author = ", ".join(a["name"] for a in data.get("authors", []))
-    return data.get("title", str(book_id)), author
+    summaries = data.get("summaries") or []
+    summary = clean_summary(summaries[0]) if summaries else ""
+    return BookMeta(data.get("title", str(book_id)), author, summary)
 
 
 def read_library(path: Path = LIBRARY_FILE) -> list[int]:
@@ -272,13 +286,13 @@ def index_books(book_ids: list[int]) -> None:
             if not text_path.exists():
                 save_book(book_id)
             if not meta_path.exists():
-                title, author = book_metadata(book_id)
-                if not author:
+                meta = book_metadata(book_id)
+                if not meta.author:
                     print(
                         f"  ! {book_id} has no author on Gutenberg — set it in {meta_path.name}"
                     )
                 BOOKS_DIR.mkdir(exist_ok=True)
-                meta_path.write_text(json.dumps({"title": title, "author": author}))
+                meta_path.write_text(json.dumps(meta._asdict()))
             title = json.loads(meta_path.read_text())["title"]
             if built:
                 print(f"  ~ {book_id} {title} (metadata backfilled)")
@@ -314,8 +328,11 @@ def load_library(book_ids: list[int] | None = None) -> tuple[list[Passage], np.n
         meta_path = BOOKS_DIR / f"{book_id}.meta.json"
         meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
         title, author = meta.get("title", str(book_id)), meta.get("author", "")
+        summary = meta.get("summary", "")
         for i, c in enumerate(json.loads(chunks_path.read_text())):
-            passages.append(Passage(title, author, c["label"], c["text"], book_id, i))
+            passages.append(
+                Passage(title, author, c["label"], c["text"], book_id, i, summary)
+            )
         matrices.append(np.load(vectors_path))
     return passages, np.vstack(matrices) if matrices else np.empty((0, 0))
 
