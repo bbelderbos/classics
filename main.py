@@ -28,8 +28,8 @@ BOOKS_DIR = Path("books")
 LIBRARY_FILE = Path("library.txt")
 EMBED_MODEL = "all-mpnet-base-v2"
 HTTP_TIMEOUT = 30  # seconds — never let a stalled Gutendex hang the CLI forever
-# below this the best match is noise — nonsense queries top out around 0.28
-MIN_SCORE = 0.35
+# below this the best match is noise — off-topic English tops out ~0.26, keyboard-mash ~0.31
+MIN_SCORE = 0.32
 
 
 class Book(NamedTuple):
