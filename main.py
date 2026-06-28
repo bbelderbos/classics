@@ -31,8 +31,10 @@ TARGET_WORDS = (
     250  # = ~330–350 tokens = safe buffer below the 384 max of all-mpnet-base-v2
 )
 HTTP_TIMEOUT = 30  # seconds — never let a stalled Gutendex hang the CLI forever
-# below this the best match is noise — off-topic English tops out ~0.26, keyboard-mash ~0.31
-MIN_SCORE = 0.32
+# below this the best match is noise. On the 250-word index: legit floor ~0.35
+# ("abusive people", "be more confident"), most noise ≤0.32 (keyboard-mash ~0.34,
+# off-topic English ≤0.27). The bands kiss at the margin — no threshold is perfect.
+MIN_SCORE = 0.34
 
 
 class Book(NamedTuple):
