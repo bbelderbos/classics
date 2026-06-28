@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import requests
 
 import main
 from main import (
@@ -214,3 +215,65 @@ def test_best_excerpts_batched_matches_per_passage(monkeypatch):
     one_by_one = [best_excerpt(t, "cats", max_words=6) for t in texts]
     assert batched == one_by_one
     assert batched[1] == "A solitary line with no rivals here."  # single-sentence path
+
+
+class FakeResponse:
+    def __init__(self, json_data=None, http_error=None):
+        self._json = json_data if json_data is not None else {}
+        self._http_error = http_error
+
+    def json(self):
+        return self._json
+
+    def raise_for_status(self):
+        if self._http_error:
+            raise self._http_error
+
+
+def test_search_book_raises_on_http_error(monkeypatch):
+    # a 5xx/HTML error page must surface as HTTPError, not a bare KeyError on "results"
+    err = requests.HTTPError("500")
+    monkeypatch.setattr(
+        main.requests, "get", lambda *a, **k: FakeResponse(http_error=err)
+    )
+    with pytest.raises(requests.HTTPError):
+        main.search_book("anything")
+
+
+def test_search_book_returns_empty_when_results_missing(monkeypatch):
+    monkeypatch.setattr(main.requests, "get", lambda *a, **k: FakeResponse({}))
+    assert main.search_book("nothing here") == []
+
+
+def test_search_book_passes_term_as_param_with_timeout(monkeypatch):
+    captured = {}
+
+    def fake_get(url, **kwargs):
+        captured.update(url=url, **kwargs)
+        return FakeResponse({"results": []})
+
+    monkeypatch.setattr(main.requests, "get", fake_get)
+    main.search_book("war & peace")  # the & must not corrupt the query string
+    assert captured["params"] == {"search": "war & peace"}
+    assert captured["timeout"]  # set, non-zero
+
+
+def test_book_metadata_raises_on_http_error(monkeypatch):
+    err = requests.HTTPError("404")
+    monkeypatch.setattr(
+        main.requests, "get", lambda *a, **k: FakeResponse(http_error=err)
+    )
+    with pytest.raises(requests.HTTPError):
+        main.book_metadata(123)
+
+
+def test_book_metadata_uses_timeout(monkeypatch):
+    captured = {}
+
+    def fake_get(url, **kwargs):
+        captured.update(kwargs)
+        return FakeResponse({"title": "Walden", "authors": [{"name": "Thoreau"}]})
+
+    monkeypatch.setattr(main.requests, "get", fake_get)
+    assert main.book_metadata(123) == ("Walden", "Thoreau")
+    assert captured["timeout"]

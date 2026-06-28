@@ -22,11 +22,12 @@ os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 os.environ.setdefault("TQDM_DISABLE", "1")  # silence the model's "Loading weights" bar
 
-SEARCH_URL = "https://gutendex.com/books/?search="
+SEARCH_URL = "https://gutendex.com/books/"
 BOOK_URL = "https://gutendex.com/books/"
 BOOKS_DIR = Path("books")
 LIBRARY_FILE = Path("library.txt")
 EMBED_MODEL = "all-mpnet-base-v2"
+HTTP_TIMEOUT = 30  # seconds — never let a stalled Gutendex hang the CLI forever
 # below this the best match is noise — nonsense queries top out around 0.28
 MIN_SCORE = 0.35
 
@@ -41,7 +42,8 @@ class Book(NamedTuple):
 
 
 def search_book(title: str) -> list[Book]:
-    response = requests.get(SEARCH_URL + title).json()
+    response = requests.get(SEARCH_URL, params={"search": title}, timeout=HTTP_TIMEOUT)
+    response.raise_for_status()
     return [
         Book(
             id=int(book["id"]),
@@ -51,18 +53,18 @@ def search_book(title: str) -> list[Book]:
             languages=book["languages"],
             download_count=int(book["download_count"]),
         )
-        for book in response["results"]
+        for book in response.json().get("results", [])
     ]
 
 
 def get_book_text(book_id: int) -> str:
-    response = requests.get(f"{BOOK_URL}{book_id}")
+    response = requests.get(f"{BOOK_URL}{book_id}", timeout=HTTP_TIMEOUT)
     response.raise_for_status()
     formats = response.json().get("formats", {})
     text_url = formats.get("text/plain; charset=utf-8") or formats.get("text/plain")
     if not text_url:
         raise ValueError(f"No plain text format found for book ID {book_id}")
-    text_response = requests.get(text_url)
+    text_response = requests.get(text_url, timeout=HTTP_TIMEOUT)
     text_response.raise_for_status()
     return text_response.text
 
@@ -255,7 +257,9 @@ class Passage(NamedTuple):
 
 
 def book_metadata(book_id: int) -> tuple[str, str]:
-    data = requests.get(f"{BOOK_URL}{book_id}").json()
+    response = requests.get(f"{BOOK_URL}{book_id}", timeout=HTTP_TIMEOUT)
+    response.raise_for_status()
+    data = response.json()
     author = ", ".join(a["name"] for a in data.get("authors", []))
     return data.get("title", str(book_id)), author
 
