@@ -468,7 +468,9 @@
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         const q = input.value.trim();
-        if (q) search(q);
+        if (!q) return;
+        history.pushState({}, "", `?q=${encodeURIComponent(q)}`);
+        search(q);
       });
 
       // fill the box but don't submit — make people read and own the question first
@@ -480,7 +482,7 @@
         })
       );
 
-      function resetSearch() {
+      function clearView() {
         input.value = "";
         results.innerHTML = "";
         document.getElementById("pitch").hidden = false;
@@ -490,8 +492,25 @@
         floatShare.hidden = true;
         activeQuery = "";
         window.scrollTo(0, 0);
+      }
+
+      function resetSearch() {
+        clearView();
+        history.pushState({}, "", location.pathname);
         input.focus();
       }
+
+      // restore results from a ?q= link, and keep back/forward in sync
+      function applyUrl() {
+        const q = new URLSearchParams(location.search).get("q");
+        if (q) {
+          input.value = q;
+          search(q);
+        } else {
+          clearView();
+        }
+      }
+      window.addEventListener("popstate", applyUrl);
 
       const homeLink = document.getElementById("homeLink");
       homeLink.addEventListener("click", resetSearch);
@@ -944,6 +963,8 @@
       function stripMarkup(t) {
         return t.replace(/\[\d+\]/g, "").replace(/_([^_]+)_/g, "$1");
       }
-    </script>
+
+      applyUrl(); // reproduce a shared ?q= link on load
+</script>
   </body>
 </html>
