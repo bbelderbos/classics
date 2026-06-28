@@ -143,7 +143,10 @@ def embed(texts: list[str]) -> np.ndarray:
 
 
 def retrieve(query: str, vectors: np.ndarray, k: int = 5) -> list[tuple[int, float]]:
-    scores = vectors @ embed([query])[0]
+    # match the query to the index dtype: a float16 index @ float32 query forces numpy
+    # to upcast the whole index to float32 (~230 MB spike that OOM-kills the 1 GB box).
+    # Same dtype = BLAS gemv in place. Rank drift from f16 accumulation is ≤2e-4.
+    scores = vectors @ embed([query])[0].astype(vectors.dtype)
     top = np.argsort(scores)[::-1][:k]
     return [(int(i), float(scores[i])) for i in top]
 
