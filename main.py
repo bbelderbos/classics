@@ -209,25 +209,6 @@ def best_excerpt(text: str, query: str, max_words: int = 60) -> str:
     return _grow_window(sentences, scores, max_words)
 
 
-def best_excerpts(texts: list[str], query: str, max_words: int = 60) -> list[str]:
-    per_text = [split_sentences(t) for t in texts]
-    flat = [s for sentences in per_text for s in sentences]
-    if not flat:
-        return [reflow(t) for t in texts]
-    scores = embed(flat) @ embed([query])[0]
-    out: list[str] = []
-    pos = 0
-    for text, sentences in zip(texts, per_text):
-        window = scores[pos : pos + len(sentences)]
-        pos += len(sentences)
-        out.append(
-            reflow(text)
-            if len(sentences) <= 1
-            else _grow_window(sentences, window, max_words)
-        )
-    return out
-
-
 def humanize_author(author: str) -> str:
     if author.count(",") == 1:
         last, first = (part.strip() for part in author.split(","))
