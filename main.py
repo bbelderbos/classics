@@ -27,6 +27,9 @@ BOOK_URL = "https://gutendex.com/books/"
 BOOKS_DIR = Path("books")
 LIBRARY_FILE = Path("library.txt")
 EMBED_MODEL = "all-mpnet-base-v2"
+TARGET_WORDS = (
+    250  # = ~330–350 tokens = safe buffer below the 384 max of all-mpnet-base-v2
+)
 HTTP_TIMEOUT = 30  # seconds — never let a stalled Gutendex hang the CLI forever
 # below this the best match is noise — off-topic English tops out ~0.26, keyboard-mash ~0.31
 MIN_SCORE = 0.32
@@ -91,7 +94,9 @@ def _heading(paragraph: str) -> str | None:
     return line if len(line) <= 60 and HEADING_RE.match(line) else None
 
 
-def chunk_text(text: str, target_words: int = 600, overlap: int = 1) -> list[Chunk]:
+def chunk_text(
+    text: str, target_words: int = TARGET_WORDS, overlap: int = 1
+) -> list[Chunk]:
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     chunks: list[Chunk] = []
     current: list[str] = []
@@ -107,15 +112,18 @@ def chunk_text(text: str, target_words: int = 600, overlap: int = 1) -> list[Chu
                 chapter = heading
             label = " — ".join(part for part in (section, chapter) if part)
             continue
-        if not current:
-            chunk_label = label
-        current.append(para)
-        words += len(para.split())
-        if words >= target_words:
+        para_words = len(para.split())
+        if current and words + para_words > target_words:
+            # flush before overshooting, so target_words is a ceiling (fits the
+            # embedder's token limit) rather than a floor we always blow past
             chunks.append(Chunk(chunk_label, "\n\n".join(current)))
             current = current[-overlap:] if overlap else []
             words = sum(len(p.split()) for p in current)
             chunk_label = label  # next chunk starts in whatever chapter is current
+        if not current:
+            chunk_label = label
+        current.append(para)
+        words += para_words
     if current:
         chunks.append(Chunk(chunk_label, "\n\n".join(current)))
     return chunks
@@ -156,7 +164,9 @@ def diversify(
 
 def build_index(book_id: int, text: str) -> tuple[list[Chunk], np.ndarray]:
     chunks = chunk_text(text)
-    vectors = embed([c.text for c in chunks])
+    # float16 halves the index in RAM/disk; cosine ranking is unaffected
+    # (max score drift ~4e-5, no top-k reordering) and the matmul upcasts to f32
+    vectors = embed([c.text for c in chunks]).astype(np.float16)
     BOOKS_DIR.mkdir(exist_ok=True)
     (BOOKS_DIR / f"{book_id}.chunks.json").write_text(
         json.dumps([c._asdict() for c in chunks])
@@ -282,6 +292,7 @@ def index_books(book_ids: list[int]) -> None:
     for book_id in book_ids:
         meta_path = BOOKS_DIR / f"{book_id}.meta.json"
         built = (BOOKS_DIR / f"{book_id}.npy").exists()
+        print(f"Indexing {book_id}...", end="", flush=True)
         if built and meta_path.exists():
             print(f"  = {book_id} already indexed")
             continue
