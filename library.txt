@@ -29,7 +29,7 @@
 6130    # Homer — The Iliad
 7849    # Kafka — The Trial
 10661   # Epictetus — The Discourses of Epictetus
-11945   # Schopenhauer — Essays of Schopenhauer
+10741   # Schopenhauer — The Wisdom of Life
 17405   # Sun Tzu — The Art of War
 22295   # Aquinas — On Prayer and the Contemplative Life
 28054   # Dostoevsky — The Brothers Karamazov
@@ -54,16 +54,16 @@
 11224   # Utilitarianism
 14591   # Faust [part 1]. Translated Into English in the Original Metres
 9371    # The Praise of Folly
-21959   # Letters from a Self-Made Merchant to His Son
+59      # Descartes — Discourse on the Method
 3361    # Letters to His Son, Complete: On the Fine Art of Becoming a Man of the World and a Gentleman
 2527    # The Sorrows of Young Werther
 148     # The Autobiography of Benjamin Franklin
-59844   # The Science of Getting Rich (Wattles)
+31      # Sophocles — Oedipus the King / Oedipus at Colonus / Antigone
 14033   # Plutarch's Lives, Volume 1 (of 4)
 14114   # Plutarch's Lives, Volume 2 (of 4)
 14140   # Plutarch's Lives, Volume 3 (of 4)
 44315   # Plutarch's Lives, Volume 4 (of 4)
-368     # Conwell — Acres of Diamonds
+18269   # Pascal — Pensées
 766     # David Copperfield by Charles Dickens
 3296    # The Confessions of St. Augustine
 45304   # Augustine — The City of God
