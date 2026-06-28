@@ -164,6 +164,7 @@
       .meter { display: inline-flex; gap: 3px; align-items: center; vertical-align: middle; margin-left: 0.5rem; }
       .meter .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: 0.28; }
       .meter .dot.on { background: var(--accent); opacity: 1; }
+      .card-meta .meter { margin-left: 0; margin-right: 0.5rem; }
       .actions { flex: none; display: flex; align-items: center; gap: 0.6rem; }
       .copy-btn {
         padding: 0.25rem 0.7rem;
@@ -216,21 +217,45 @@
         max-width: 62ch;
         hyphens: auto;
       }
-      .full p:first-letter { /* gentle lead-in, not a full drop cap */ }
+      .full p.lead:first-letter {
+        float: left;
+        font-size: 3.4em;
+        line-height: 0.72;
+        padding: 0.04em 0.09em 0 0;
+        color: var(--accent);
+      }
       .full .read-hint { color: var(--muted); font-style: italic; font-size: 0.82rem; margin-bottom: 1rem; }
       .full .book-summary {
+        float: right;
+        width: 40%;
+        max-width: 22rem;
+        margin: 0.2rem 0 1.2rem 1.8rem;
+        padding: 0.9rem 1.1rem;
+        background: color-mix(in srgb, var(--accent) 6%, transparent);
+        border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+        border-radius: 4px;
         color: var(--muted);
-        font-size: 0.92rem;
-        line-height: 1.6;
-        max-width: 62ch;
-        margin: 0 0 1.2rem;
+        font-size: 0.85rem;
+        line-height: 1.55;
       }
       .full .book-summary .label {
         display: block;
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        margin-bottom: 0.25rem;
+        color: var(--accent);
+        margin-bottom: 0.3rem;
+      }
+      @media (max-width: 640px) {
+        /* no room to float beside the passage — stack it after, so the passage stays the hero */
+        .full { display: flex; flex-direction: column; }
+        .full .book-summary {
+          float: none;
+          order: 1;
+          width: auto;
+          max-width: none;
+          margin: 1.4rem 0 0;
+        }
       }
       .full mark {
         background: none;
@@ -329,8 +354,9 @@
               <p class="demo-q"><span>You ask</span>“Is it better to be feared or loved?”</p>
               <div class="card demo-card">
                 <div class="cite">
-                  <span class="where">Machiavelli, Niccolò · The Prince — CHAPTER XVI. CONCERNING LIBERALITY AND MEANNESS<span class="meter" title="Resonates" aria-label="Resonates"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></span>
+                  <span class="where">Machiavelli, Niccolò · The Prince — CHAPTER XVI. CONCERNING LIBERALITY AND MEANNESS</span>
                 </div>
+                <p class="card-meta"><span class="meter" title="Resonates" aria-label="Resonates"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span>Resonates</p>
                 <p class="preview">Upon this a question arises: whether it be better to be loved than feared or feared than loved? It may be answered that one should wish to be both, bu…</p>
               </div>
             </div>
@@ -338,8 +364,9 @@
               <p class="demo-q"><span>You ask</span>“Should I trust my own ambition?”</p>
               <div class="card demo-card">
                 <div class="cite">
-                  <span class="where">Wattles, W. D. (Wallace Delois) · The Science of Getting Rich — CHAPTER XIII. GETTING INTO THE RIGHT BUSINESS.<span class="meter" title="Resonates" aria-label="Resonates"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></span>
+                  <span class="where">Wattles, W. D. (Wallace Delois) · The Science of Getting Rich — CHAPTER XIII. GETTING INTO THE RIGHT BUSINESS.</span>
                 </div>
+                <p class="card-meta"><span class="meter" title="Resonates" aria-label="Resonates"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span>Resonates</p>
                 <p class="preview">Doing what you want to do is life; and there is no real satisfaction in living if we are compelled to be forever doing something which we do not like …</p>
               </div>
             </div>
@@ -495,7 +522,7 @@
           const card = document.createElement("div");
           card.className = "card";
           const paras = paragraphize(m.text)
-            .map((p) => `<p>${escapeHtml(p)}</p>`)
+            .map((p, i) => `<p${i === 0 ? ' class="lead"' : ""}>${escapeHtml(p)}</p>`)
             .join("");
           const { word } = resonance(m.score);
           const summaryHtml = m.summary
@@ -506,13 +533,13 @@
           card.innerHTML = `
             <div class="head">
               <div class="cite">
-                <span class="where">${escapeHtml(m.cite)}${meterHtml(m.score)}</span>
+                <span class="where">${escapeHtml(m.cite)}</span>
                 <span class="actions">
                   <button class="copy-btn" type="button">Copy</button>
                   <label class="pick-label"><input type="checkbox" class="pick" /> PDF</label>
                 </span>
               </div>
-              <p class="card-meta">${word} · ${readingTime(m.text)}</p>
+              <p class="card-meta">${meterHtml(m.score)}${word} · ${readingTime(m.text)}</p>
             </div>
             <div class="full" hidden data-author="${escapeHtml(m.author)}" data-title="${escapeHtml(
             m.title
