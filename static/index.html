@@ -211,8 +211,6 @@
       .export-bar .export-x { padding: 0 0.55rem; font-size: 1.25rem; line-height: 1; background: transparent; border: none; color: var(--muted); border-radius: 999px; }
       .export-bar .export-x:hover { color: var(--accent); }
       .card-meta { color: var(--muted); margin: 0.5rem 0 0; font-size: 0.85rem; }
-      .card .preview { color: var(--muted); margin: 0.5rem 0 0; font-style: italic; }
-      .card.open .preview { display: none; }
       .full { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
       .full[hidden] { display: none; }
       .full p {
@@ -362,7 +360,6 @@
                   <span class="where">Machiavelli, Niccolò · The Prince — CHAPTER XVI. CONCERNING LIBERALITY AND MEANNESS</span>
                 </div>
                 <p class="card-meta"><span class="meter" title="Resonates" aria-label="Resonates"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span>Resonates</p>
-                <p class="preview">Upon this a question arises: whether it be better to be loved than feared or feared than loved? It may be answered that one should wish to be both, bu…</p>
               </div>
             </div>
             <div class="demo-col">
@@ -372,7 +369,6 @@
                   <span class="where">Wattles, W. D. (Wallace Delois) · The Science of Getting Rich — CHAPTER XIII. GETTING INTO THE RIGHT BUSINESS.</span>
                 </div>
                 <p class="card-meta"><span class="meter" title="Resonates" aria-label="Resonates"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span>Resonates</p>
-                <p class="preview">Doing what you want to do is life; and there is no real satisfaction in living if we are compelled to be forever doing something which we do not like …</p>
               </div>
             </div>
           </div>
@@ -475,10 +471,12 @@
         if (q) search(q);
       });
 
+      // fill the box but don't submit — make people read and own the question first
       document.querySelectorAll(".chip").forEach((chip) =>
         chip.addEventListener("click", () => {
           input.value = chip.textContent;
-          search(chip.textContent);
+          input.scrollIntoView({ behavior: "smooth", block: "center" });
+          input.focus({ preventScroll: true });
         })
       );
 
@@ -565,7 +563,6 @@
                 </span>
               </div>
               <p class="card-meta">${meterHtml(m.score)}${word} · ${readingTime(m.text)}</p>
-              <p class="preview">${escapeHtml(previewText(m.text))}</p>
             </div>
             <div class="full" hidden data-author="${escapeHtml(m.author)}" data-title="${escapeHtml(
             m.title
@@ -577,7 +574,6 @@
           const full = card.querySelector(".full");
           card.querySelector(".head").addEventListener("click", () => {
             full.hidden = !full.hidden;
-            card.classList.toggle("open", !full.hidden);
             if (!full.hidden) {
               full.dataset.openedAt = performance.now();
             } else {
@@ -947,11 +943,6 @@
 
       function stripMarkup(t) {
         return t.replace(/\[\d+\]/g, "").replace(/_([^_]+)_/g, "$1");
-      }
-
-      function previewText(text, max = 160) {
-        const flat = stripMarkup(squish(text));
-        return flat.length > max ? flat.slice(0, max).trimEnd() + "…" : flat;
       }
     </script>
   </body>
