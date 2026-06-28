@@ -1,10 +1,9 @@
 # Curated canon — Project Gutenberg book IDs, one per line.
 # After adding or removing a line, run `uv run main.py sync` to reconcile books/
-10      # The King James Version of the Bible
 74      # Twain — The Adventures of Tom Sawyer
 84      # Shelley — Frankenstein
 98      # Dickens — A Tale of Two Cities
-100     # Shakespeare — The Complete Works
+27761   # Hamlet by William Shakespeare
 135     # Hugo — Les Misérables
 174     # Wilde — The Picture of Dorian Gray
 205     # Walden, and On The Duty Of Civil Disobedience by Henry David Thoreau
@@ -100,3 +99,4 @@
 2130    # Utopia by Saint Thomas More
 219     # Heart of Darkness by Joseph Conrad
 25344   # The Scarlet Letter by Nathaniel Hawthorne
+10      # The King James Version of the Bible
