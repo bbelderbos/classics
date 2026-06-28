@@ -142,11 +142,25 @@ def embed(texts: list[str]) -> np.ndarray:
     return _model().encode(texts, normalize_embeddings=True)
 
 
+_SCORE_BLOCK = 8192
+
+
+def _scores(vectors: np.ndarray, query: np.ndarray) -> np.ndarray:
+    q = query.astype(np.float32)
+    if vectors.dtype != np.float16:
+        return vectors @ q
+    # numpy has no BLAS kernel for float16, so a float16 matmul drops to a ~20x slower
+    # scalar loop. Upcast to float32 in row-blocks: each block hits BLAS gemv, but the
+    # whole index is never float32 at once (~230 MB spike that swap-thrashes the 1 GB box).
+    scores = np.empty(vectors.shape[0], np.float32)
+    for i in range(0, vectors.shape[0], _SCORE_BLOCK):
+        block = vectors[i : i + _SCORE_BLOCK]
+        scores[i : i + _SCORE_BLOCK] = block.astype(np.float32) @ q
+    return scores
+
+
 def retrieve(query: str, vectors: np.ndarray, k: int = 5) -> list[tuple[int, float]]:
-    # match the query to the index dtype: a float16 index @ float32 query forces numpy
-    # to upcast the whole index to float32 (~230 MB spike that OOM-kills the 1 GB box).
-    # Same dtype = BLAS gemv in place. Rank drift from f16 accumulation is ≤2e-4.
-    scores = vectors @ embed([query])[0].astype(vectors.dtype)
+    scores = _scores(vectors, embed([query])[0])
     top = np.argsort(scores)[::-1][:k]
     return [(int(i), float(scores[i])) for i in top]
 
