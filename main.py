@@ -253,9 +253,13 @@ def book_metadata(book_id: int) -> BookMeta:
     response = requests.get(f"{BOOK_URL}{book_id}", timeout=HTTP_TIMEOUT)
     response.raise_for_status()
     data = response.json()
-    author = ", ".join(a["name"] for a in data.get("authors", []))
+
+    author_list = [a["name"] for a in data.get("authors", [])]
+    author = ", ".join(author_list) if author_list else "Various"
+
     summaries = data.get("summaries") or []
     summary = clean_summary(summaries[0]) if summaries else ""
+
     return BookMeta(data.get("title", str(book_id)), author, summary)
 
 
@@ -287,10 +291,6 @@ def index_books(book_ids: list[int]) -> None:
                 save_book(book_id)
             if not meta_path.exists():
                 meta = book_metadata(book_id)
-                if not meta.author:
-                    print(
-                        f"  ! {book_id} has no author on Gutenberg — set it in {meta_path.name}"
-                    )
                 BOOKS_DIR.mkdir(exist_ok=True)
                 meta_path.write_text(json.dumps(meta._asdict()))
             title = json.loads(meta_path.read_text())["title"]
