@@ -367,6 +367,23 @@ def load_library(book_ids: list[int] | None = None) -> tuple[list[Passage], np.n
     return passages, np.vstack(matrices) if matrices else np.empty((0, 0))
 
 
+def drop_adjacent(
+    ranked: list[tuple[int, float]], passages: list[Passage]
+) -> list[tuple[int, float]]:
+    # overlap=1 chunking makes consecutive chunks share a paragraph, so adjacent chunks
+    # embed near-identically; keep only the higher-scoring one to avoid duplicate results
+    kept: list[tuple[int, float]] = []
+    taken: dict[int, set[int]] = {}
+    for idx, score in ranked:
+        p = passages[idx]
+        offsets = taken.setdefault(p.book_id, set())
+        if offsets & {p.offset - 1, p.offset + 1}:
+            continue
+        kept.append((idx, score))
+        offsets.add(p.offset)
+    return kept
+
+
 def search_passages(
     query: str,
     passages: list[Passage],
@@ -384,6 +401,7 @@ def search_passages(
             floor * pool[0][1]
         )  # relative to the best match, so it scales per query
         pool = [(i, s) for i, s in pool if s >= cutoff]
+    pool = drop_adjacent(pool, passages)
     return diversify(
         pool, lambda i: passages[i].author or passages[i].title, k, per_book
     )

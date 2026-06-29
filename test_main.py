@@ -45,6 +45,20 @@ def test_search_passages_caps_by_author_across_titles(monkeypatch):
     assert [i for i, _ in out] == [0, 1, 3]  # Schopenhauer capped at 2, then Tolstoy
 
 
+def test_search_passages_drops_adjacent_overlapping_chunks(monkeypatch):
+    # consecutive chunks from one book share a paragraph (overlap=1) and embed alike;
+    # only the higher-scoring of an adjacent pair should surface
+    passages = [
+        Passage("Poe Vol. 1", "Poe, Edgar Allan", "", "a", book_id=1, offset=253),
+        Passage("Poe Vol. 1", "Poe, Edgar Allan", "", "b", book_id=1, offset=254),
+        Passage("War and Peace", "Tolstoy, Leo", "", "c", book_id=2, offset=10),
+    ]
+    pool = [(0, 0.9), (1, 0.88), (2, 0.7)]
+    monkeypatch.setattr("main.retrieve", lambda q, v, k: pool)
+    out = search_passages("q", passages, np.empty((3, 1)), k=5, per_book=2, floor=0)
+    assert [i for i, _ in out] == [0, 2]  # chunk 254 dropped as adjacent to 253
+
+
 def test_search_passages_returns_empty_when_best_match_below_min_score(monkeypatch):
     passages = [Passage("Walden", "Thoreau", "", "a")]
     monkeypatch.setattr("main.retrieve", lambda q, v, k: [(0, 0.28)])
