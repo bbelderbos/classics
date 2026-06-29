@@ -250,6 +250,14 @@
         color: var(--accent);
         margin-bottom: 0.3rem;
       }
+      .full .book-summary .source {
+        display: block;
+        margin-top: 0.7rem;
+        font-size: 0.78rem;
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .full .book-summary .source:hover { text-decoration: underline; }
       @media (max-width: 640px) {
         /* no room to float beside the passage — stack it after, so the passage stays the hero */
         .full { display: flex; flex-direction: column; }
@@ -381,7 +389,7 @@
                 <p class="card-meta"><span class="meter" title="Speaks directly" aria-label="Speaks directly"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span>Speaks directly · ~6 min read</p>
               </div>
               <div class="full" data-author="Bacon, Francis" data-title="Bacon's Essays, and Wisdom of the Ancients">
-                <p class="book-summary"><span class="label">About this book</span>“Bacon's Essays and Wisdom of the Ancients” by Francis Bacon is a philosophical treatise written in the early 17th century — a collection of his well-known essays on moral and civil themes, interwoven with reflections on human nature and his interpretations of classical wisdom.</p>
+                <p class="book-summary"><span class="label">About this book</span>“Bacon's Essays and Wisdom of the Ancients” by Francis Bacon is a philosophical treatise written in the early 17th century — a collection of his well-known essays on moral and civil themes, interwoven with reflections on human nature and his interpretations of classical wisdom.<a class="source" href="https://www.gutenberg.org/ebooks/56463" target="_blank" rel="noopener">Read the full text on Project Gutenberg ↗</a></p>
                 <p class="read-hint">Select any lines to share them as an image.</p>
                 <p class="lead">I cannot call riches better than the baggage of virtue; the Roman word is better, “impedimenta;” for as the baggage is to an army, so is riches to virtue; it cannot be spared nor left behind, but it hindereth the march; yea, and the care of it sometimes loseth or disturbeth the victory. Of great riches there is no real use, except it be in the distribution; the rest is but conceit.</p>
                 <p>So saith Solomon: “Where much is, there are many to consume it; and what hath the owner, but the sight of it with his eyes?” The personal fruition in any man cannot reach to feel great riches: there is a custody of them, or a power of dole and donative of them, or a fame of them, but no solid use to the owner.</p>
@@ -569,10 +577,13 @@
             .map((p, i) => `<p${i === 0 ? ' class="lead"' : ""}>${enrich(p)}</p>`)
             .join("");
           const { word } = resonance(m.score);
+          const sourceHtml = m.book_id
+            ? `<a class="source" href="https://www.gutenberg.org/ebooks/${m.book_id}" target="_blank" rel="noopener">Read the full text on Project Gutenberg ↗</a>`
+            : "";
           const summaryHtml = m.summary
             ? `<p class="book-summary"><span class="label">About this book</span>${escapeHtml(
                 m.summary
-              )}</p>`
+              )}${sourceHtml}</p>`
             : "";
           card.innerHTML = `
             <div class="head">
