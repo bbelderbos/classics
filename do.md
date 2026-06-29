@@ -78,6 +78,24 @@ dropped from `library.txt`, leaving orphans the app will still load.
 > droplet `systemctl stop classics` first (you restart afterward anyway) to avoid holding the model
 > in RAM twice and risking an OOM.
 
+### TODO at next reindex — split oversized paragraphs in `chunk_text`
+
+Gutenberg has single paragraphs far larger than `TARGET_WORDS` (250) — e.g. Poe's "Whist…"
+paragraph at 505 words. Two bugs follow: (1) ~250 words ≈ the 384-token ceiling of
+all-mpnet-base-v2, so the tail of every oversized paragraph is truncated by the embedder and is
+silently unsearchable; (2) the `overlap=1` carryover copies that whole oversized block into the next
+chunk, so adjacent chunks embed near-identically and surface as duplicate results.
+
+`drop_adjacent` in `search_passages` already hides the duplicate symptom at retrieval time, so this
+is not urgent. But the truncation (1) is a real quality loss, and the root fix is a one-time reindex
+— so do it the next time you're reindexing the library anyway, not standalone.
+
+Fix: before the `chunk_text` loop, split any paragraph over `target_words` into sentence-bounded
+pieces (reuse `split_sentences`) so no unit exceeds the target. The body branch then iterates the
+pieces instead of the raw paragraph. After this, the carryover is at most one normal-sized piece and
+every word gets embedded. Update the `chunk_text` boundary tests, then `uv run main.py sync` to
+rebuild and rsync up.
+
 4. FastAPI service
 
 You want to have the FastAPI app running as a service so it starts on boot and can be restarted easily. Create a systemd service file for it:
