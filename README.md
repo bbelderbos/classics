@@ -20,7 +20,7 @@ no network at query time) and matched with plain NumPy cosine similarity.
 
 ## How it works
 
-1. **Index (once per book):** each book is split into ~600-word passages, tagged with their
+1. **Index (once per book):** each book is split into ~250-word passages, tagged with their
    `Book`/`Chapter` heading, embedded, and cached to `books/<id>.{txt,chunks.json,npy,meta.json}`.
 2. **Ask (per query):** only your question is embedded — one small vector — then matched against
    the cached library matrix. The corpus is never re-embedded.
@@ -117,7 +117,7 @@ underneath, and the score roughly doubles:
 | productivity and time management | is being busy the same as living well? |
 
 Scores are relative: a top match around `0.45+` is strong. If even the best match falls below
-`MIN_SCORE` (0.35) the question is treated as off-domain and nothing is shown — rather than five
+`MIN_SCORE` (0.34) the question is treated as off-domain and nothing is shown — rather than five
 weak matches dressed up as answers. Nonsense and modern-jargon queries top out around 0.28, so the
 floor catches them while leaving real questions (which clear 0.40) untouched.
 
