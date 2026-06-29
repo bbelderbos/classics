@@ -621,7 +621,8 @@
       }
 
       const isTouch = matchMedia("(pointer: coarse)").matches;
-      document.addEventListener("mouseup", () => setTimeout(updateFloat, 0));
+      // desktop only: iOS synthesizes mouseup after taps and would fight the docked path
+      if (!isTouch) document.addEventListener("mouseup", () => setTimeout(updateFloat, 0));
       document.addEventListener("scroll", () => {
         if (!isTouch) floatShare.hidden = true;
       }, true);
@@ -638,6 +639,7 @@
       }
 
       function updateFloat() {
+        if (isTouch) return; // touch uses the docked path; never write inline top/left here
         const sel = captureSelection();
         if (!sel) {
           floatShare.hidden = true;
@@ -669,6 +671,8 @@
           logQuote(selection);
         }
         floatShare.hidden = true;
+        // clear the selection so the next one fires a fresh selectionchange and re-docks the button
+        if (isTouch) window.getSelection()?.removeAllRanges();
       });
 
       function logQuote({ text, author, title, query }) {
