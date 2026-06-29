@@ -6,6 +6,8 @@
 
 Semantic search over a curated library of public-domain literature.
 
+**Live at [askthecanon.com](https://askthecanon.com).**
+
 Instead of grepping for words, you bring a *question* — "how should I deal with people who
 wrong me?" — and get the passages that mean that, ranked across every book in your library and
 cited by author, title, and chapter. Matching is by meaning, not keywords, so a passage scores
