@@ -437,6 +437,7 @@
     <div id="overlay" class="overlay" hidden>
       <img id="overlayImg" alt="shareable quote" />
       <div class="row">
+        <button id="share" hidden>Share</button>
         <button id="download">Download</button>
         <button id="closeOverlay" class="ghost">Close</button>
       </div>
@@ -726,10 +727,20 @@
       function openOverlay(canvas) {
         overlayImg.src = canvas.toDataURL("image/png");
         overlay.hidden = false;
+        const shareBtn = document.getElementById("share");
+        shareBtn.hidden = true;
         canvas.toBlob((blob) => {
           navigator.clipboard
             ?.write?.([new ClipboardItem({ "image/png": blob })])
             .catch(() => {});
+          const file = new File([blob], "classics-quote.png", { type: "image/png" });
+          if (navigator.canShare?.({ files: [file] })) {
+            shareBtn.hidden = false;
+            shareBtn.onclick = () =>
+              navigator
+                .share({ files: [file], url: location.href })
+                .catch(() => {});
+          }
         }, "image/png");
         document.getElementById("download").onclick = () => {
           const a = document.createElement("a");
