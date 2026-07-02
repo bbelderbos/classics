@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPBasicCredentials
+from fastapi.testclient import TestClient
 from sqlmodel import create_engine
 
 import db
@@ -106,6 +107,21 @@ def test_stats_auth_accepts_correct_credentials(monkeypatch):
     monkeypatch.setenv("STATS_USER", "admin")
     monkeypatch.setenv("STATS_PASSWORD", "secret")
     assert web.require_stats_auth(_auth()) is None
+
+
+def test_cards_mount_serves_png():
+    card_dir = web.CARDS_DIR / "_mount_test"
+    card_dir.mkdir(parents=True, exist_ok=True)
+    png = b"\x89PNG\r\n\x1a\n"
+    (card_dir / "card-1.png").write_bytes(png)
+    try:
+        # no `with` block, so the heavy lifespan pre-warm never runs
+        response = TestClient(web.app).get("/cards/_mount_test/card-1.png")
+        assert response.status_code == 200
+        assert response.content == png
+    finally:
+        (card_dir / "card-1.png").unlink()
+        card_dir.rmdir()
 
 
 def test_read_endpoint_records_dwell(store):
