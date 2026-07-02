@@ -11,7 +11,7 @@ class BufferError(RuntimeError):
 
 ORGS_QUERY = "query { account { organizations { id } } }"
 
-CHANNELS_QUERY = """query Channels($org: String!) {
+CHANNELS_QUERY = """query Channels($org: OrganizationId!) {
   channels(input: { organizationId: $org }) {
     id
     displayName
@@ -62,10 +62,17 @@ def _graphql(query: str, variables: dict | None = None) -> dict:
         headers={"Authorization": f"Bearer {config('BUFFER_TOKEN')}"},
         timeout=HTTP_TIMEOUT,
     )
-    response.raise_for_status()
-    body = response.json()
-    if body.get("errors"):
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    # GraphQL validation errors come back as HTTP 400 with the detail in the body,
+    # so read the body before raise_for_status or the real message is lost
+    if body and body.get("errors"):
         raise BufferError(body["errors"][0].get("message", "graphql error"))
+    response.raise_for_status()
+    if body is None:
+        raise BufferError(f"non-JSON response ({response.status_code})")
     return body
 
 
