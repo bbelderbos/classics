@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bgB" cx="50%" cy="42%" r="70%">
+      <stop offset="0%" stop-color="#f7f3ea"/>
+      <stop offset="100%" stop-color="#e5d8c0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bgB)"/>
+  <circle cx="512" cy="512" r="452" fill="none" stroke="#8a5a2b" stroke-width="10"/>
+  <circle cx="512" cy="512" r="428" fill="none" stroke="#cc9152" stroke-width="3" opacity="0.7"/>
+  <!-- large opening quotation mark, optically centered -->
+  <text x="512" y="880" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif" font-size="700" font-weight="700"
+        fill="#8a5a2b">&#8220;</text>
+</svg>

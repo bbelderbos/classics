@@ -54,11 +54,13 @@
       .theme-toggle:hover { border-color: var(--accent); }
       .wrap { max-width: 860px; margin: 0 auto; padding: 2.5rem 1.25rem 6rem; }
       header { text-align: center; margin-bottom: 2.5rem; }
+      .brand { display: flex; align-items: center; justify-content: center; gap: 0.65rem; margin-bottom: 0.3rem; }
+      .brand-mark { width: 46px; height: 46px; flex: none; }
       #homeLink { cursor: pointer; display: inline-block; }
       .site-footer { text-align: center; margin-top: 3rem; padding-bottom: 5rem; font-size: 0.85rem; }
       .site-footer a { color: var(--muted); text-decoration: none; border-bottom: 1px solid transparent; }
       .site-footer a:hover { color: var(--accent); border-bottom-color: var(--accent); }
-      h1 { font-size: 2.4rem; margin: 0 0 0.3rem; letter-spacing: 0.5px; }
+      h1 { font-size: 2.4rem; margin: 0; letter-spacing: 0.5px; }
       .tagline { color: var(--muted); font-style: italic; margin: 0; }
       form { display: flex; gap: 0.5rem; margin: 2rem 0 0.5rem; }
       input[type="search"] {
@@ -331,7 +333,14 @@
     <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">☾</button>
     <div class="wrap">
       <header>
-        <h1 id="homeLink" title="Start a new search" role="button" tabindex="0">Ask the canon</h1>
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" r="47" fill="#f5f1e8" stroke="#8a5a2b" stroke-width="4" />
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#cc9152" stroke-width="1.5" opacity="0.7" />
+            <text x="50" y="86" text-anchor="middle" font-family="Georgia, serif" font-size="72" font-weight="700" fill="#8a5a2b">&#8220;</text>
+          </svg>
+          <h1 id="homeLink" title="Start a new search" role="button" tabindex="0">Ask the canon</h1>
+        </div>
         <p class="tagline">Bring a question. Find where the classics speak to it.</p>
       </header>
 
