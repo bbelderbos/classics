@@ -36,6 +36,37 @@ def test_build_post_input_with_image_and_schedule():
     assert got["assets"] == [{"image": {"url": "https://x/card.png"}}]
 
 
+def test_build_post_input_includes_metadata_when_given():
+    meta = {"instagram": {"type": "post", "shouldShareToFeed": True}}
+    assert build_post_input("hi", "c", metadata=meta)["metadata"] == meta
+
+
+def test_metadata_for_instagram_requires_type_and_feed():
+    assert buffer.metadata_for("instagram") == {
+        "instagram": {"type": "post", "shouldShareToFeed": True}
+    }
+
+
+def test_metadata_for_other_services_is_none():
+    assert buffer.metadata_for("twitter") is None
+
+
+def test_queue_continues_past_a_failing_channel(monkeypatch):
+    def fake_create(text, cid, image_url=None, due_at=None, metadata=None):
+        if cid == "ig":
+            raise BufferError("Instagram posts require a type")
+        return f"post_{cid}"
+
+    monkeypatch.setattr(buffer, "create_post", fake_create)
+    out = buffer.queue(
+        "t",
+        "https://x/c.png",
+        [{"id": "ig", "service": "instagram"}, {"id": "x", "service": "twitter"}],
+    )
+    assert out["posted"] == {"x": "post_x"}
+    assert "ig" in out["errors"]
+
+
 def test_parse_create_result_returns_post_id():
     payload = {"data": {"createPost": {"post": {"id": "post_42"}}}}
     assert parse_create_result(payload) == "post_42"

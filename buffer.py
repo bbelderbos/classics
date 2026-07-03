@@ -33,6 +33,7 @@ def build_post_input(
     channel_id: str,
     image_url: str | None = None,
     due_at: str | None = None,
+    metadata: dict | None = None,
 ) -> dict:
     post: dict = {"text": text, "channelId": channel_id, "schedulingType": "automatic"}
     if due_at:
@@ -42,7 +43,16 @@ def build_post_input(
         post["mode"] = "addToQueue"
     if image_url:
         post["assets"] = [{"image": {"url": image_url}}]
+    if metadata:
+        post["metadata"] = metadata
     return post
+
+
+def metadata_for(service: str) -> dict | None:
+    # Instagram rejects a post without a type; a quote card is a normal feed post
+    if service == "instagram":
+        return {"instagram": {"type": "post", "shouldShareToFeed": True}}
+    return None
 
 
 def parse_create_result(payload: dict) -> str:
@@ -90,9 +100,11 @@ def create_post(
     channel_id: str,
     image_url: str | None = None,
     due_at: str | None = None,
+    metadata: dict | None = None,
 ) -> str:
     payload = _graphql(
-        CREATE_POST, {"input": build_post_input(text, channel_id, image_url, due_at)}
+        CREATE_POST,
+        {"input": build_post_input(text, channel_id, image_url, due_at, metadata)},
     )
     return parse_create_result(payload)
 
@@ -100,7 +112,17 @@ def create_post(
 def queue(
     text: str,
     image_url: str | None,
-    channel_ids: list[str],
+    channels: list[dict],
     due_at: str | None = None,
-) -> dict[str, str]:
-    return {cid: create_post(text, cid, image_url, due_at) for cid in channel_ids}
+) -> dict[str, dict]:
+    # keep going when one channel fails, so a single bad network can't block the rest
+    posted: dict[str, str] = {}
+    errors: dict[str, str] = {}
+    for channel in channels:
+        try:
+            posted[channel["id"]] = create_post(
+                text, channel["id"], image_url, due_at, metadata_for(channel["service"])
+            )
+        except BufferError as exc:
+            errors[channel["id"]] = str(exc)
+    return {"posted": posted, "errors": errors}

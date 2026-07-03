@@ -186,10 +186,12 @@ def choose(
     for rank, (card, cite, s) in enumerate(rows, 1):
         flag = "" if card.verbatim else " [yellow](fell back to excerpt)[/]"
         console.print(f"  [bold cyan]{rank}[/]  [dim]{cite}[/]{flag}")
-        console.print(f"      [italic]“{card.text}”[/]")
+        console.print(f"      [dim]on the card:[/] [italic]“{card.text}”[/]")
         console.print(f"      [dim]why:[/] {s.get('why', '')}")
-        console.print(f"      [dim]caption:[/] {card.caption}")
-        console.print(f"      [dim]tags:[/] {' '.join(card.hashtags)}\n")
+        console.print("      [dim]post body:[/]")
+        for line in compose_text(card).splitlines():
+            console.print(f"        [green]{line}[/]" if line else "")
+        console.print()
 
     picks = input("pick numbers to keep (comma-separated, enter to skip) > ").strip()
     chosen = []
@@ -227,12 +229,17 @@ def publish_and_queue(
     if services:
         wanted = {s.strip() for s in services.split(",")}
         available = [c for c in available if c["service"] in wanted]
-    channel_ids = [c["id"] for c in available if not c["isQueuePaused"]]
+    targets = [c for c in available if not c["isQueuePaused"]]
     for card, url in zip(cards, urls):
-        results = buffer.queue(compose_text(card), url, channel_ids)
+        result = buffer.queue(compose_text(card), url, targets)
         console.print(
-            f"[green]queued[/] {len(results)} channel(s): “{card.text[:48]}…”"
+            f"[green]queued[/] {len(result['posted'])} channel(s): “{card.text[:48]}…”"
         )
+        for channel_id, message in result["errors"].items():
+            service = next(
+                (t["service"] for t in targets if t["id"] == channel_id), channel_id
+            )
+            console.print(f"  [red]{service} failed:[/] {message}")
 
 
 def pick_questions(args: argparse.Namespace) -> list[str]:
