@@ -229,7 +229,7 @@ def publish_and_queue(
     question: str, cards: list[Card], paths: list[Path], services: str
 ) -> None:
     urls = publish_cards(_slug(question), paths) if paths else [None] * len(cards)
-    available = buffer.channels(buffer.organizations()[0])
+    available = buffer.channels(buffer.first_organization())
     if services:
         wanted = {s.strip() for s in services.split(",")}
         available = [c for c in available if c["service"] in wanted]

@@ -91,6 +91,13 @@ def organizations() -> list[str]:
     return [o["id"] for o in body["data"]["account"]["organizations"]]
 
 
+def first_organization() -> str:
+    orgs = organizations()
+    if not orgs:
+        raise BufferError("no Buffer organizations for this token")
+    return orgs[0]
+
+
 def channels(org_id: str) -> list[dict]:
     return _graphql(CHANNELS_QUERY, {"org": org_id})["data"]["channels"]
 

@@ -51,6 +51,17 @@ def test_metadata_for_other_services_is_none():
     assert buffer.metadata_for("twitter") is None
 
 
+def test_first_organization_raises_when_none(monkeypatch):
+    monkeypatch.setattr(buffer, "organizations", lambda: [])
+    with pytest.raises(BufferError, match="no Buffer organizations"):
+        buffer.first_organization()
+
+
+def test_first_organization_returns_first(monkeypatch):
+    monkeypatch.setattr(buffer, "organizations", lambda: ["org_a", "org_b"])
+    assert buffer.first_organization() == "org_a"
+
+
 def test_queue_continues_past_a_failing_channel(monkeypatch):
     def fake_create(text, cid, image_url=None, due_at=None, metadata=None):
         if cid == "ig":
