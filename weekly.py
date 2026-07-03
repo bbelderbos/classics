@@ -133,10 +133,14 @@ def run_claude(prompt: str) -> str:
 
 
 def parse_suggestions(output: str) -> list[dict]:
-    match = re.search(r"\[.*\]", output, re.DOTALL)
-    if not match:
+    start = output.find("[")
+    if start == -1:
         raise ValueError("no JSON array found in claude output")
-    return json.loads(match.group(0))
+    try:
+        result, _ = json.JSONDecoder().raw_decode(output[start:])
+    except json.JSONDecodeError as e:
+        raise ValueError(f"could not parse JSON array from claude output: {e}") from e
+    return result
 
 
 class Card(NamedTuple):

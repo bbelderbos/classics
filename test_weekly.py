@@ -59,6 +59,17 @@ def test_parse_suggestions_raises_without_array():
         parse_suggestions("no json here")
 
 
+def test_parse_suggestions_ignores_trailing_prose():
+    assert parse_suggestions('[{"index": 0}]\n\nHope that helps!') == [{"index": 0}]
+
+
+def test_parse_suggestions_stops_at_first_array():
+    # greedy regex would swallow the trailing "[2, 3]" and fail to parse
+    assert parse_suggestions('Here:\n[{"index": 1}]\nand ignore [2, 3]') == [
+        {"index": 1}
+    ]
+
+
 def test_build_prompt_includes_question_and_indexed_passage():
     passage = Passage("Meditations", "Aurelius, Marcus", "BOOK II", "the body text")
     prompt = build_prompt("how to let go?", [Candidate(passage, 0.71)])
