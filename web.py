@@ -13,6 +13,7 @@ import numpy as np
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import FileResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.staticfiles import StaticFiles
 from mdweaver import weave_pdf
 from pydantic import BaseModel
 
@@ -56,6 +57,12 @@ app = FastAPI(title="classics", lifespan=lifespan)
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 STATS_HTML = Path(__file__).parent / "static" / "stats.html"
 FAVICON = Path(__file__).parent / "static" / "favicon.svg"
+
+# staging area for social quote cards; Buffer fetches these by URL when a post is
+# queued, then re-hosts its own copy — so they need not live here permanently
+CARDS_DIR = Path(__file__).parent / "cards"
+CARDS_DIR.mkdir(exist_ok=True)
+app.mount("/cards", StaticFiles(directory=CARDS_DIR), name="cards")
 
 security = HTTPBasic()
 
