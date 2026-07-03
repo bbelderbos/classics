@@ -16,11 +16,13 @@ def render_cards(cards: list[dict], out_dir: Path) -> list[Path]:
     paths: list[Path] = []
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
-        page = browser.new_page()
-        page.goto(INDEX_HTML.as_uri(), wait_until="domcontentloaded")
-        for i, card in enumerate(cards, 1):
-            path = out_dir / f"card-{i}.png"
-            path.write_bytes(_png(page, card))
-            paths.append(path)
-        browser.close()
+        try:
+            page = browser.new_page()
+            page.goto(INDEX_HTML.as_uri(), wait_until="domcontentloaded")
+            for i, card in enumerate(cards, 1):
+                path = out_dir / f"card-{i}.png"
+                path.write_bytes(_png(page, card))
+                paths.append(path)
+        finally:
+            browser.close()
     return paths
