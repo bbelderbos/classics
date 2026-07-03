@@ -36,14 +36,14 @@ def build_post_input(
     metadata: dict | None = None,
 ) -> dict:
     post: dict = {"text": text, "channelId": channel_id, "schedulingType": "automatic"}
-    if due_at:
+    if due_at is not None:
         post["mode"] = "customScheduled"
         post["dueAt"] = due_at
     else:
         post["mode"] = "addToQueue"
-    if image_url:
+    if image_url is not None:
         post["assets"] = [{"image": {"url": image_url}}]
-    if metadata:
+    if metadata is not None:
         post["metadata"] = metadata
     return post
 
@@ -57,10 +57,10 @@ def metadata_for(service: str) -> dict | None:
 
 def parse_create_result(payload: dict) -> str:
     node = payload["data"]["createPost"]
-    if node.get("message"):
+    if node.get("message") is not None:
         raise BufferError(node["message"])
     post = node.get("post")
-    if not post:
+    if post is None:
         raise BufferError("unexpected createPost response")
     return post["id"]
 
@@ -78,7 +78,7 @@ def _graphql(query: str, variables: dict | None = None) -> dict:
         body = None
     # GraphQL validation errors come back as HTTP 400 with the detail in the body,
     # so read the body before raise_for_status or the real message is lost
-    if body and body.get("errors"):
+    if body and body.get("errors") is not None:
         raise BufferError(body["errors"][0].get("message", "graphql error"))
     response.raise_for_status()
     if body is None:
