@@ -221,3 +221,8 @@ __marimo__/
 books
 notes
 *.db
+
+# social pipeline artifacts
+cards/
+posted.json
+.DS_Store
