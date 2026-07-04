@@ -19,6 +19,12 @@ def store(monkeypatch, tmp_path):
     return db
 
 
+@pytest.fixture(autouse=True)
+def _reset_limiter():
+    web.limiter.reset()
+    yield
+
+
 def test_stats_empty_db_returns_zeros(store):
     s = store.stats()
     assert s["week"] == {
@@ -124,14 +130,29 @@ def test_cards_mount_serves_png():
         card_dir.rmdir()
 
 
+def test_v1_routes_registered_and_api_removed():
+    client = TestClient(web.app)
+    # 422 (missing required q) proves /v1/ask is routed, not 404
+    assert client.get("/v1/ask").status_code == 422
+    assert client.get("/api/ask").status_code == 404
+
+
 def test_read_endpoint_records_dwell(store):
-    web.read(web.ReadIn(query="q", author="a", title="t", ms=5000))
+    client = TestClient(web.app)
+    res = client.post(
+        "/v1/read", json={"query": "q", "author": "a", "title": "t", "ms": 5000}
+    )
+    assert res.status_code == 200
     assert store.stats()["week"]["reads"] == 1
 
 
 def test_pdf_endpoint_records_only_after_successful_generation(store, monkeypatch):
     monkeypatch.setattr(web, "weave_pdf", lambda doc, css: b"%PDF-")
-    web.pdf(web.PdfIn(query="q", items=[web.PdfItem(text="x"), web.PdfItem(text="y")]))
+    client = TestClient(web.app)
+    res = client.post(
+        "/v1/pdf", json={"query": "q", "items": [{"text": "x"}, {"text": "y"}]}
+    )
+    assert res.status_code == 200
     assert store.stats()["week"]["pdfs"] == 1
 
 
@@ -140,6 +161,16 @@ def test_pdf_endpoint_does_not_record_on_failure(store, monkeypatch):
         raise RuntimeError("no weasyprint")
 
     monkeypatch.setattr(web, "weave_pdf", boom)
+    client = TestClient(web.app)
     with pytest.raises(RuntimeError):
-        web.pdf(web.PdfIn(query="q", items=[web.PdfItem(text="x")]))
+        client.post("/v1/pdf", json={"query": "q", "items": [{"text": "x"}]})
     assert store.stats()["week"]["pdfs"] == 0
+
+
+def test_rate_limit_returns_429_after_pdf_limit(store, monkeypatch):
+    monkeypatch.setattr(web, "weave_pdf", lambda doc, css: b"%PDF-")
+    client = TestClient(web.app)
+    payload = {"query": "q", "items": [{"text": "x"}]}
+    codes = [client.post("/v1/pdf", json=payload).status_code for _ in range(11)]
+    assert codes.count(200) == 10  # PDF_LIMIT default is 10/minute
+    assert codes[-1] == 429

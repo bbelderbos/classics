@@ -546,7 +546,7 @@
         results.innerHTML = `<div class="loader"><div class="spinner"></div><span>Reading the canon…</span></div>`;
         const params = expanded ? "&k=15&per_book=4&floor=0.4" : "";
         try {
-          const res = await fetch(`/api/ask?q=${encodeURIComponent(q)}${params}`);
+          const res = await fetch(`/v1/ask?q=${encodeURIComponent(q)}${params}`);
           render(q, await res.json(), expanded);
         } catch {
           results.innerHTML = `<p class="status">Something went wrong. Try again.</p>`;
@@ -697,7 +697,7 @@
       });
 
       function logQuote({ text, author, title, query }) {
-        fetch("/api/quote", {
+        fetch("/v1/quote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text, author, title, query }),
@@ -718,8 +718,8 @@
           ms,
         });
         const blob = new Blob([body], { type: "application/json" });
-        if (!navigator.sendBeacon?.("/api/read", blob)) {
-          fetch("/api/read", {
+        if (!navigator.sendBeacon?.("/v1/read", blob)) {
+          fetch("/v1/read", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body,
@@ -948,7 +948,7 @@
         exportBtn.disabled = true;
         exportBtn.textContent = "Building…";
         try {
-          const res = await fetch("/api/pdf", {
+          const res = await fetch("/v1/pdf", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ query: activeQuery, items }),
