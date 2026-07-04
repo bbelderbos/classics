@@ -220,8 +220,13 @@ def _slug(text: str) -> str:
     return base or "card"
 
 
+def _hashtag(tag: str) -> str:
+    return "#" + tag.lstrip("#").strip()
+
+
 def compose_text(card: Card) -> str:
-    parts = [card.caption.strip(), " ".join(card.hashtags)]
+    tags = " ".join(_hashtag(t) for t in card.hashtags if t.strip())
+    parts = [card.caption.strip(), tags]
     return "\n\n".join(p for p in parts if p)
 
 

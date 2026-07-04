@@ -136,3 +136,9 @@ def test_compose_text_joins_caption_and_hashtags():
 def test_compose_text_omits_empty_parts():
     assert compose_text(_card("just a caption")) == "just a caption"
     assert compose_text(_card("", ["#only", "#tags"])) == "#only #tags"
+
+
+def test_compose_text_prefixes_missing_hash():
+    assert compose_text(_card("A hook", ["stoic", "#wisdom"])) == (
+        "A hook\n\n#stoic #wisdom"
+    )
