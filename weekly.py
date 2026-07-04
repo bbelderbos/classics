@@ -90,9 +90,9 @@ class Candidate(NamedTuple):
 
 
 def gather(
-    question: str, passages: list[Passage], vectors, k: int = 5
+    question: str, passages: list[Passage], vectors, k: int = 10, per_book: int = 3
 ) -> list[Candidate]:
-    ranked = search_passages(question, passages, vectors, k)
+    ranked = search_passages(question, passages, vectors, k, per_book)
     return [Candidate(passages[i], score) for i, score in ranked]
 
 
@@ -102,14 +102,15 @@ shareable quote cards for X, LinkedIn, Threads, Pinterest, and Instagram.
 
 Question of the week: "{question}"
 
-Below are the full candidate passages the engine surfaced, each with an index. For the best \
-ones, pull the single verbatim line or two that would work as a standalone social quote card — \
-timeless, punchy, emotionally resonant, and readable without the question for context. Copy the \
-words exactly from the passage; never paraphrase.
+Below are the candidate passages the engine surfaced, each with an index. Select the five \
+strongest (fewer only if there aren't five worth sharing) and, for each, pull the single \
+verbatim line or two that would work as a standalone social quote card — timeless, punchy, \
+emotionally resonant, and readable without the question for context. Copy the words exactly \
+from the passage; never paraphrase.
 
 {candidates}
 
-Return ONLY a JSON array, best first, each item:
+Return ONLY a JSON array of your picks, best first, each item:
 {{"index": <int>, "quote": "<verbatim words for the card, ~12-40 words, no surrounding quotation marks>", \
 "why": "<one line on why it lands>", "caption": "<hook caption, no hashtags>", \
 "hashtags": ["<3-5 tags>"]}}"""
@@ -304,7 +305,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "question", nargs="?", help="one question (default: cycle the seed list)"
     )
-    parser.add_argument("-k", type=int, default=5, help="passages to rank per question")
+    parser.add_argument(
+        "-k", type=int, default=10, help="passages to rank per question"
+    )
     parser.add_argument(
         "--limit", type=int, default=1, help="how many fresh questions to process"
     )
