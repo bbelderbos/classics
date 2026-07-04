@@ -8,14 +8,20 @@ import time
 from functools import cache
 from html import escape
 from pathlib import Path
+from typing import cast
 
 import numpy as np
-from fastapi import Depends, FastAPI, HTTPException, status
+from decouple import config
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import FileResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from mdweaver import weave_pdf
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from starlette.types import ExceptionHandler
 
 from db import (
     PdfEvent,
@@ -54,6 +60,27 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="classics", lifespan=lifespan)
+
+# get_remote_address reads request.client.host, so behind a proxy run uvicorn/
+# gunicorn with --forwarded-allow-ips to limit per user rather than per proxy.
+# Storage is in-memory: with multiple workers each holds its own counts; point
+# it at Redis (storage_uri=) once you scale past one worker.
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+# slowapi types the handler's exc as RateLimitExceeded, narrower than the
+# Exception that Starlette's add_exception_handler expects
+app.add_exception_handler(
+    RateLimitExceeded, cast(ExceptionHandler, _rate_limit_exceeded_handler)
+)
+
+# consumer-facing API, versioned so installed mobile clients keep working across
+# changes; the browser UI in static/index.html targets these same routes
+v1 = APIRouter(prefix="/v1")
+
+ASK_LIMIT = config("ASK_RATE_LIMIT", default="30/minute")
+PDF_LIMIT = config("PDF_RATE_LIMIT", default="10/minute")
+WRITE_LIMIT = config("WRITE_RATE_LIMIT", default="60/minute")
+
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 STATS_HTML = Path(__file__).parent / "static" / "stats.html"
 FAVICON = Path(__file__).parent / "static" / "favicon.svg"
@@ -122,8 +149,11 @@ def api_stats(_: None = Depends(require_stats_auth)) -> dict:
     return stats()
 
 
-@app.get("/api/ask")
-def ask(q: str, k: int = 5, per_book: int = 2, floor: float = 0.6) -> list[Match]:
+@v1.get("/ask")
+@limiter.limit(ASK_LIMIT)
+def ask(
+    request: Request, q: str, k: int = 5, per_book: int = 2, floor: float = 0.6
+) -> list[Match]:
     # should load from cache at this point, because it's pre-warmed in the
     # lifespan context manager
     passages, vectors = library()
@@ -171,8 +201,9 @@ class QuoteIn(BaseModel):
     text: str
 
 
-@app.post("/api/quote")
-def quote(body: QuoteIn) -> dict[str, bool]:
+@v1.post("/quote")
+@limiter.limit(WRITE_LIMIT)
+def quote(request: Request, body: QuoteIn) -> dict[str, bool]:
     record(
         QuoteEvent(
             query=body.query,
@@ -191,8 +222,9 @@ class ReadIn(BaseModel):
     ms: int
 
 
-@app.post("/api/read")
-def read(body: ReadIn) -> dict[str, bool]:
+@v1.post("/read")
+@limiter.limit(WRITE_LIMIT)
+def read(request: Request, body: ReadIn) -> dict[str, bool]:
     record(
         ReadEvent(
             query=body.query,
@@ -274,8 +306,9 @@ def _slug(query: str) -> str:
     return f"classics-{base}.pdf" if base else "classics.pdf"
 
 
-@app.post("/api/pdf")
-def pdf(body: PdfIn) -> Response:
+@v1.post("/pdf")
+@limiter.limit(PDF_LIMIT)
+def pdf(request: Request, body: PdfIn) -> Response:
     document = _pdf_document(body.query, body.items)
     data = weave_pdf(document, PDF_CSS)
     record(PdfEvent(query=body.query, passages=len(body.items)))
@@ -284,3 +317,6 @@ def pdf(body: PdfIn) -> Response:
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{_slug(body.query)}"'},
     )
+
+
+app.include_router(v1)
