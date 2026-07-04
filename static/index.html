@@ -763,34 +763,46 @@
         if (e.target === overlay) overlay.hidden = true;
       });
 
+      // fixed 4:5 frame: Instagram's tallest allowed feed ratio and safe for Pinterest/X.
+      // A variable-height canvas drifts outside IG's 0.8–1.91 band, so we pin the frame
+      // and shrink the type to fit instead.
+      const CARD_W = 1080;
+      const CARD_H = 1350;
+      const CARD_PAD = 96;
+      const FOOTER_RESERVE = 120; // footer lockup + breathing room below the block
+
+      function fitLayout(ctx, { query, text, attribution, maxW, availH }) {
+        for (let fit = 1; ; fit -= 0.04) {
+          const askFont = `${26 * fit}px Georgia, serif`;
+          const quoteFont = `italic ${46 * fit}px Georgia, serif`;
+          const attrFont = `${27 * fit}px Georgia, serif`;
+          const askLH = 36 * fit, quoteLH = 66 * fit, attrLH = 38 * fit;
+          const askGap = 48 * fit, quoteGap = 44 * fit;
+          const askLines = query ? wrap(ctx, `Asked: ${squish(query)}`, askFont, maxW) : [];
+          const quoteLines = wrap(ctx, quoted(squish(text)), quoteFont, maxW);
+          const attrLines = wrap(ctx, attribution, attrFont, maxW);
+          const height =
+            (askLines.length ? askLines.length * askLH + askGap : 0) +
+            quoteLines.length * quoteLH + quoteGap +
+            attrLines.length * attrLH;
+          if (height <= availH || fit <= 0.55) {
+            return { fit, askFont, quoteFont, attrFont, askLH, quoteLH, attrLH, askGap, quoteGap, askLines, quoteLines, attrLines, height };
+          }
+        }
+      }
+
       function renderImage({ text, author, title, query }) {
         const scale = 2;
-        const W = 1080;
-        const pad = 96;
+        const W = CARD_W;
+        const H = CARD_H;
+        const pad = CARD_PAD;
         const maxW = W - pad * 2;
+        const availH = H - pad - FOOTER_RESERVE;
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 
-        const askFont = "26px Georgia, serif";
-        const quoteFont = "italic 46px Georgia, serif";
-        const attrFont = "27px Georgia, serif";
-        const askLH = 36;
-        const quoteLH = 66;
-        const attrLH = 38;
-
-        const askLines = query ? wrap(ctx, `Asked: ${squish(query)}`, askFont, maxW) : [];
-        const quoteLines = wrap(ctx, quoted(squish(text)), quoteFont, maxW);
         const attribution = `— ${[humanize(author), title].filter(Boolean).join(", ")}`;
-        const attrLines = wrap(ctx, attribution, attrFont, maxW);
-
-        let y = pad;
-        const askTop = y;
-        if (askLines.length) y += askLines.length * askLH + 48;
-        const quoteTop = y;
-        y += quoteLines.length * quoteLH + 44;
-        const attrTop = y;
-        y += attrLines.length * attrLH;
-        const H = y + 120; // footer lockup + padding
+        const L = fitLayout(ctx, { query, text, attribution, maxW, availH });
 
         canvas.width = W * scale;
         canvas.height = H * scale;
@@ -804,19 +816,28 @@
 
         ctx.textBaseline = "alphabetic";
 
+        let y = pad + (availH - L.height) / 2; // center the block in the fixed frame
+
         // the asked question — a quiet prompt the canon is answering
-        ctx.fillStyle = COLORS.muted;
-        ctx.font = askFont;
-        askLines.forEach((line, i) => ctx.fillText(line, pad, askTop + (i + 1) * askLH));
+        if (L.askLines.length) {
+          ctx.fillStyle = COLORS.muted;
+          ctx.font = L.askFont;
+          const top = y;
+          L.askLines.forEach((line, i) => ctx.fillText(line, pad, top + (i + 1) * L.askLH));
+          y += L.askLines.length * L.askLH + L.askGap;
+        }
 
         // the answer, in the author's own words
         ctx.fillStyle = COLORS.ink;
-        ctx.font = quoteFont;
-        quoteLines.forEach((line, i) => ctx.fillText(line, pad, quoteTop + (i + 1) * quoteLH - 18));
+        ctx.font = L.quoteFont;
+        const quoteTop = y;
+        L.quoteLines.forEach((line, i) => ctx.fillText(line, pad, quoteTop + (i + 1) * L.quoteLH - 18 * L.fit));
+        y += L.quoteLines.length * L.quoteLH + L.quoteGap;
 
         ctx.fillStyle = COLORS.accent;
-        ctx.font = attrFont;
-        attrLines.forEach((line, i) => ctx.fillText(line, pad, attrTop + (i + 1) * attrLH - 10));
+        ctx.font = L.attrFont;
+        const attrTop = y;
+        L.attrLines.forEach((line, i) => ctx.fillText(line, pad, attrTop + (i + 1) * L.attrLH - 10 * L.fit));
 
         // quiet footer lockup: product mark left, site right
         const footY = H - pad + 30;
