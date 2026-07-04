@@ -8,6 +8,7 @@ import time
 from functools import cache
 from html import escape
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 from decouple import config
@@ -20,6 +21,7 @@ from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from starlette.types import ExceptionHandler
 
 from db import (
     PdfEvent,
@@ -65,14 +67,11 @@ app = FastAPI(title="classics", lifespan=lifespan)
 # it at Redis (storage_uri=) once you scale past one worker.
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
-
-
-def _on_rate_limit(request: Request, exc: Exception) -> Response:
-    assert isinstance(exc, RateLimitExceeded)
-    return _rate_limit_exceeded_handler(request, exc)
-
-
-app.add_exception_handler(RateLimitExceeded, _on_rate_limit)
+# slowapi types the handler's exc as RateLimitExceeded, narrower than the
+# Exception that Starlette's add_exception_handler expects
+app.add_exception_handler(
+    RateLimitExceeded, cast(ExceptionHandler, _rate_limit_exceeded_handler)
+)
 
 # consumer-facing API, versioned so installed mobile clients keep working across
 # changes; the browser UI in static/index.html targets these same routes
