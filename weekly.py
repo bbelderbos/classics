@@ -98,7 +98,7 @@ def gather(
 
 PROMPT_TEMPLATE = """You are a growth-focused social media editor for askthecanon.com, a \
 semantic search engine over public-domain classics. We turn a real reader question into \
-shareable quote cards for X, LinkedIn, Threads, Pinterest, and Instagram.
+shareable quote cards for X, LinkedIn, Threads, and Instagram.
 
 Question of the week: "{question}"
 

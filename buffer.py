@@ -17,10 +17,6 @@ CHANNELS_QUERY = """query Channels($org: OrganizationId!) {
     displayName
     service
     isQueuePaused
-    metadata {
-      __typename
-      ... on PinterestMetadata { boards { serviceId name } }
-    }
   }
 }"""
 
@@ -52,24 +48,11 @@ def build_post_input(
     return post
 
 
-PINTEREST_BOARD = "classics"
-
-
-def pinterest_board_id(channel: dict) -> str | None:
-    boards = (channel.get("metadata") or {}).get("boards") or []
-    match = next((b for b in boards if b["name"] == PINTEREST_BOARD), None)
-    return (match or boards[0])["serviceId"] if boards else None
-
-
 def metadata_for(channel: dict) -> dict | None:
     service = channel["service"]
     # Instagram rejects a post without a type; a quote card is a normal feed post
     if service == "instagram":
         return {"instagram": {"type": "post", "shouldShareToFeed": True}}
-    # Pinterest rejects a post without a board to pin it to
-    if service == "pinterest":
-        board_id = pinterest_board_id(channel)
-        return {"pinterest": {"boardServiceId": board_id}} if board_id else None
     return None
 
 

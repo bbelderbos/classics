@@ -51,29 +51,8 @@ def test_metadata_for_other_services_is_none():
     assert buffer.metadata_for({"service": "twitter"}) is None
 
 
-def test_metadata_for_pinterest_picks_named_board():
-    channel = {
-        "service": "pinterest",
-        "metadata": {
-            "boards": [
-                {"name": "other", "serviceId": "1"},
-                {"name": "classics", "serviceId": "2"},
-            ]
-        },
-    }
-    assert buffer.metadata_for(channel) == {"pinterest": {"boardServiceId": "2"}}
-
-
-def test_metadata_for_pinterest_falls_back_to_first_board():
-    channel = {
-        "service": "pinterest",
-        "metadata": {"boards": [{"name": "other", "serviceId": "1"}]},
-    }
-    assert buffer.metadata_for(channel) == {"pinterest": {"boardServiceId": "1"}}
-
-
-def test_metadata_for_pinterest_without_boards_is_none():
-    assert buffer.metadata_for({"service": "pinterest", "metadata": None}) is None
+def test_metadata_for_threads_is_none():
+    assert buffer.metadata_for({"service": "threads"}) is None
 
 
 def test_first_organization_raises_when_none(monkeypatch):
