@@ -112,8 +112,7 @@ from the passage; never paraphrase.
 
 Return ONLY a JSON array of your picks, best first, each item:
 {{"index": <int>, "quote": "<verbatim words for the card, ~12-40 words, no surrounding quotation marks>", \
-"why": "<one line on why it lands>", "caption": "<hook caption, no hashtags>", \
-"hashtags": ["<3-5 tags>"]}}"""
+"why": "<one line on why it lands>", "caption": "<hook caption, no hashtags>"}}"""
 
 
 def build_prompt(question: str, candidates: list[Candidate]) -> str:
@@ -150,7 +149,6 @@ class Card(NamedTuple):
     title: str
     query: str
     caption: str
-    hashtags: list[str]
     verbatim: bool  # False when we fell back to best_excerpt
 
 
@@ -174,7 +172,6 @@ def build_card(question: str, candidate: Candidate, suggestion: dict) -> Card:
         title=passage.title,
         query=question,
         caption=suggestion.get("caption", ""),
-        hashtags=suggestion.get("hashtags", []),
         verbatim=verbatim,
     )
 
@@ -221,12 +218,15 @@ def _slug(text: str) -> str:
     return base or "card"
 
 
-def _hashtag(tag: str) -> str:
-    return "#" + tag.lstrip("#").strip()
+def author_hashtag(author: str) -> str:
+    name = re.sub(r"\s*\([^)]*\)", "", author).strip()
+    surname = name.split(",", 1)[0]  # "Aurelius, Marcus" -> "Aurelius"
+    words = re.findall(r"[A-Za-z0-9]+", surname)
+    return "#" + "".join(w.capitalize() for w in words) if words else ""
 
 
 def compose_text(card: Card) -> str:
-    tags = " ".join(_hashtag(t) for t in card.hashtags if t.strip())
+    tags = " ".join(t for t in ("#classics", author_hashtag(card.author)) if t)
     parts = [card.caption.strip(), tags]
     return "\n\n".join(p for p in parts if p)
 

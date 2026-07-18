@@ -123,22 +123,31 @@ def test_build_card_falls_back_when_not_verbatim(monkeypatch):
     assert card.text == "EXCERPT"
 
 
-def _card(caption="", hashtags=()):
-    return Card("t", "a", "ti", "q", caption, list(hashtags), True)
+def _card(caption="", author="Aurelius, Marcus"):
+    return Card("t", author, "ti", "q", caption, True)
 
 
-def test_compose_text_joins_caption_and_hashtags():
-    assert compose_text(_card("A hook", ["#stoic", "#wisdom"])) == (
-        "A hook\n\n#stoic #wisdom"
-    )
+def test_compose_text_appends_classics_and_author():
+    assert compose_text(_card("A hook")) == "A hook\n\n#classics #Aurelius"
 
 
-def test_compose_text_omits_empty_parts():
-    assert compose_text(_card("just a caption")) == "just a caption"
-    assert compose_text(_card("", ["#only", "#tags"])) == "#only #tags"
+def test_compose_text_omits_empty_caption():
+    assert compose_text(_card("", author="Epictetus")) == "#classics #Epictetus"
 
 
-def test_compose_text_prefixes_missing_hash():
-    assert compose_text(_card("A hook", ["stoic", "#wisdom"])) == (
-        "A hook\n\n#stoic #wisdom"
+def test_author_hashtag_uses_surname():
+    assert weekly.author_hashtag("Aurelius, Marcus") == "#Aurelius"
+
+
+def test_author_hashtag_single_name():
+    assert weekly.author_hashtag("Epictetus") == "#Epictetus"
+
+
+def test_author_hashtag_multi_comma_keeps_surname():
+    assert weekly.author_hashtag("Augustine, of Hippo, Saint") == "#Augustine"
+
+
+def test_author_hashtag_drops_parenthetical():
+    assert (
+        weekly.author_hashtag("Fitzgerald, F. Scott (Francis Scott)") == "#Fitzgerald"
     )
