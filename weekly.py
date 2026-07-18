@@ -220,8 +220,12 @@ def _slug(text: str) -> str:
 
 def author_hashtag(author: str) -> str:
     name = re.sub(r"\s*\([^)]*\)", "", author).strip()
-    surname = name.split(",", 1)[0]  # "Aurelius, Marcus" -> "Aurelius"
-    words = re.findall(r"[A-Za-z0-9]+", surname)
+    parts = [p.strip() for p in name.split(",")]
+    if len(parts) == 2:  # "Bacon, Francis" -> "Francis Bacon"
+        name = f"{parts[1]} {parts[0]}"
+    else:  # mononym or multi-part catalog entry -> keep the leading name
+        name = parts[0]
+    words = re.findall(r"[A-Za-z0-9]+", name)
     return "#" + "".join(w.capitalize() for w in words) if words else ""
 
 
